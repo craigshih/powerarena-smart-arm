@@ -79,6 +79,100 @@ const BASE_PARTS = {
   balancer: { title: '平衡器', rows: [['作用', '抵銷工具重量，師傅只需輕推即可上下'], ['來源', '工廠原有平衡器']] },
 };
 
+// ── 手臂螢幕的畫面 ─────────────────────────────
+// 3D 模型裡的螢幕與「手臂螢幕」頁的放大畫面共用這個函式，內容一定一致。
+// 依畫布寬度等比例縮放（基準 480 × 320）。
+const SCREEN_TONE = { orange: '#ff8a3d', yellow: '#f0b545', teal: '#3dd6d0', green: '#3ccf6b', muted: '#5d6a80' };
+const SCREEN_RING = { green: '#3ccf6b', yellow: '#f0b545', red: '#e0303a', blue: '#4ea8ff', off: '#5d6a80' };
+export const SCREEN_FIX = {
+  EARLY_ATTEMPT: '放開扳機，等承盤降下',
+  SEQUENCE_ERROR: '先鎖亮白框的那一顆',
+  TIGHTEN_NG: '原地重鎖這一顆',
+  TIMEOUT: '盡快補完剩下的螺絲',
+  PHASE_WARNING: '加快完成這一階段',
+  AUTOMATION_FAULT: '不用處理，等班長復歸承盤',
+  TOOL_FAULT: '停止作業，通知班長',
+};
+
+export function drawArmScreen(c, state, side) {
+  const W = c.canvas.width;
+  const H = c.canvas.height;
+  const k = W / 480;
+  const d = describe(state);
+  const sigNow = signalsFor(state);
+  const a = state.alarm;
+  const bad = a && (a.level === 'alarm' || a.level === 'fault');
+  const warn = a && a.level === 'warn';
+  c.save();
+  c.scale(k, k);
+  const w = W / k;
+  const h = H / k;
+  c.fillStyle = bad ? '#5c0d13' : warn ? '#4a3606' : '#070b11';
+  c.fillRect(0, 0, w, h);
+  const font = (px, wt = 700) => `${wt} ${px}px -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif`;
+  // 步驟
+  c.fillStyle = SCREEN_TONE[d.tone];
+  c.fillRect(16, 16, 96, 96);
+  c.fillStyle = '#0a0e14';
+  c.font = font(70, 800);
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(d.step, 64, 68);
+  c.textAlign = 'left';
+  c.fillStyle = '#ffffff';
+  c.font = font(40);
+  c.fillText(d.title, 128, 46);
+  c.fillStyle = SCREEN_RING[sigNow.ring];
+  c.font = font(28, 600);
+  c.fillText(`工具${sigNow.label}`, 128, 92);
+  if (state.remaining != null) {
+    c.textAlign = 'right';
+    c.fillStyle = state.timedOut ? '#ff6b73' : state.remaining <= P.phaseWarnLead.v ? '#f0b545' : '#8b98ad';
+    c.fillText(state.timedOut ? '超時' : `${Math.ceil(state.remaining)}s`, w - 18, 46);
+    c.textAlign = 'left';
+  }
+  // 這一側每顆螺絲（白框＝下一顆）
+  let y = 150;
+  c.font = font(26, 500);
+  for (const id of SEQUENCE[side]) {
+    const z = zoneById(id);
+    const cur = state.expected?.zoneId === id;
+    c.fillStyle = cur ? '#ffffff' : '#9aa6b8';
+    c.fillText(`${z.phase} ${z.label}`, 18, y);
+    state.bolts[id].forEach((b, i) => {
+      const x = w - 30 - (state.bolts[id].length - 1 - i) * 34;
+      c.beginPath();
+      c.arc(x, y, 12, 0, Math.PI * 2);
+      c.fillStyle = b === 'OK' ? '#3ccf6b' : b === 'NG' ? '#e0303a' : '#2a3448';
+      c.fill();
+      if (cur && state.expected.boltIndex === i && (state.phase === 'A' || state.phase === 'C')) {
+        c.lineWidth = 4;
+        c.strokeStyle = '#ffffff';
+        c.stroke();
+      }
+    });
+    y += 40;
+  }
+  // 警示與處置
+  if (a && a.level !== 'info') {
+    const by = h - 76;
+    c.fillStyle = bad ? '#e0303a' : '#f0b545';
+    c.fillRect(0, by, w, 76);
+    c.fillStyle = bad ? '#ffffff' : '#1a1407';
+    // 預警文字跟著倒數；太長就縮小字級，不截斷
+    const text = a.type === 'PHASE_WARNING' && state.remaining != null
+      ? `${state.phase === 'A' ? '第一' : '第二'}階段剩 ${Math.ceil(state.remaining)} 秒`
+      : a.text;
+    let px = 28;
+    c.font = font(px);
+    while (px > 18 && c.measureText(text).width > w - 32) c.font = font(--px);
+    c.fillText(text, 16, by + 25);
+    c.font = font(24, 500);
+    c.fillText(`→ ${SCREEN_FIX[a.type] ?? '依提示處置'}`, 16, by + 58);
+  }
+  c.restore();
+}
+
 const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
 const LIGHT = { green: 0x3ccf6b, yellow: 0xf0b545, red: 0xe0303a, blue: 0x4ea8ff, off: 0x1e232c };
 
@@ -362,7 +456,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     }
     sig = signalsFor(state);
     running = state.tool === 'RUNNING';
-    drawScreen(state, sig);
+    drawScreen(state);
     const next = sig.ring === 'red' ? 'tag-red' : sig.ring === 'yellow' ? 'tag-yellow' : sig.ring === 'green' || sig.ring === 'blue' ? 'tag-green' : '';
     if (next !== tone) {
       if (tone) toolTag.classList.remove(tone);
@@ -372,87 +466,14 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     toolTag.textContent = `工具 ${side}・${sig.label}`;
   }
 
-  // 螢幕內容：步驟、工具狀態、這一側每顆螺絲、警示與處置
-  const TONE = { orange: '#ff8a3d', yellow: '#f0b545', teal: '#3dd6d0', green: '#3ccf6b', muted: '#5d6a80' };
-  const RING = { green: '#3ccf6b', yellow: '#f0b545', red: '#e0303a', blue: '#4ea8ff', off: '#5d6a80' };
-  const FIX = {
-    EARLY_ATTEMPT: '放開扳機，等承盤降下',
-    SEQUENCE_ERROR: '先鎖亮白框的那一顆',
-    TIGHTEN_NG: '原地重鎖這一顆',
-    TIMEOUT: '盡快補完剩下的螺絲',
-    PHASE_WARNING: '加快完成這一階段',
-    AUTOMATION_FAULT: '不用處理，等班長復歸承盤',
-    TOOL_FAULT: '停止作業，通知班長',
-  };
-  function drawScreen(state, sigNow) {
+  // 螢幕內容由 drawArmScreen 繪製；狀態沒變就不重畫
+  function drawScreen(state) {
     if (!scr.ctx) return;
-    const d = describe(state);
     const a = state.alarm;
-    const key = JSON.stringify([d, a?.type, a?.text, sigNow.label, state.bolts, state.expected, state.remaining == null ? null : Math.ceil(state.remaining)]);
+    const key = JSON.stringify([state.phase, state.tray, state.tool, state.lockReason, a?.type, a?.text, state.bolts, state.expected, state.remaining == null ? null : Math.ceil(state.remaining)]);
     if (key === scr.key) return;
     scr.key = key;
-    const c = scr.ctx;
-    const W = scr.canvas.width;
-    const H = scr.canvas.height;
-    const bad = a && (a.level === 'alarm' || a.level === 'fault');
-    const warn = a && a.level === 'warn';
-    c.fillStyle = bad ? '#5c0d13' : warn ? '#4a3606' : '#070b11';
-    c.fillRect(0, 0, W, H);
-    const font = (px, w = 700) => `${w} ${px}px -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif`;
-    // 步驟
-    c.fillStyle = TONE[d.tone];
-    c.fillRect(16, 16, 96, 96);
-    c.fillStyle = '#0a0e14';
-    c.font = font(70, 800);
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    c.fillText(d.step, 64, 68);
-    c.textAlign = 'left';
-    c.fillStyle = '#ffffff';
-    c.font = font(40);
-    c.fillText(d.title, 128, 46);
-    c.fillStyle = RING[sigNow.ring];
-    c.font = font(28, 600);
-    c.fillText(`工具${sigNow.label}`, 128, 92);
-    if (state.remaining != null) {
-      c.textAlign = 'right';
-      c.fillStyle = state.timedOut ? '#ff6b73' : state.remaining <= P.phaseWarnLead.v ? '#f0b545' : '#8b98ad';
-      c.fillText(state.timedOut ? '超時' : `${Math.ceil(state.remaining)}s`, W - 18, 46);
-      c.textAlign = 'left';
-    }
-    // 螺絲
-    let y = 150;
-    c.font = font(26, 500);
-    for (const id of SEQUENCE[side]) {
-      const z = zoneById(id);
-      const cur = state.expected?.zoneId === id;
-      c.fillStyle = cur ? '#ffffff' : '#9aa6b8';
-      c.fillText(`${z.phase} ${z.label}`, 18, y);
-      state.bolts[id].forEach((b, i) => {
-        const x = W - 30 - (state.bolts[id].length - 1 - i) * 34;
-        c.beginPath();
-        c.arc(x, y, 12, 0, Math.PI * 2);
-        c.fillStyle = b === 'OK' ? '#3ccf6b' : b === 'NG' ? '#e0303a' : '#2a3448';
-        c.fill();
-        if (cur && state.expected.boltIndex === i && (state.phase === 'A' || state.phase === 'C')) {
-          c.lineWidth = 4;
-          c.strokeStyle = '#ffffff';
-          c.stroke();
-        }
-      });
-      y += 40;
-    }
-    // 警示與處置
-    if (a && a.level !== 'info') {
-      const by = H - 76;
-      c.fillStyle = bad ? '#e0303a' : '#f0b545';
-      c.fillRect(0, by, W, 76);
-      c.fillStyle = bad ? '#ffffff' : '#1a1407';
-      c.font = font(28);
-      c.fillText(a.text.length > 15 ? `${a.text.slice(0, 15)}…` : a.text, 16, by + 25);
-      c.font = font(24, 500);
-      c.fillText(`→ ${FIX[a.type] ?? '依提示處置'}`, 16, by + 58);
-    }
+    drawArmScreen(scr.ctx, state, side);
     scr.tex.needsUpdate = true;
   }
 

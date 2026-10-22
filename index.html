@@ -204,17 +204,81 @@
     <!-- ── 手臂螢幕 ───────────────────────── -->
     <section class="view doc screen-view" data-view="screen" aria-label="手臂螢幕" hidden>
       <div class="page wide">
-        <div class="screen-bar">
-          <label class="select">
-            <span class="muted small">情境</span>
-            <select id="screen-scenario"></select>
-          </label>
-          <button id="screen-play" class="btn primary" type="button">播放</button>
-          <button id="screen-restart" class="btn" type="button">從頭</button>
-          <button id="screen-full" class="btn" type="button">全螢幕</button>
-          <span class="muted small screen-note">兩支手臂各有一面螢幕，裝在平衡器外管下端、跟著工具移動；這裡是放大檢視。</span>
+        <header class="page-head">
+          <h2>手臂螢幕：師傅低頭就看得到</h2>
+          <p>螢幕裝在平衡器外管下端，跟著工具移動、面向師傅。師傅彎腰鎖附時，螢幕就在工具旁邊的同一個視線裡：該鎖哪一顆、還剩多少時間、哪一顆沒鎖好、為什麼被攔下、要怎麼修正，一眼就知道。</p>
+        </header>
+
+        <div class="screen-bar" id="pov-stage">
+          <label class="select"><span class="muted small">情境</span><select id="pov-scenario"></select></label>
+          <button id="pov-play" class="btn primary" type="button">播放</button>
+          <button id="pov-restart" class="btn" type="button">從頭</button>
+          <div class="seg" role="group" aria-label="哪一側">
+            <button data-pov-side="L" type="button" class="on">左側手臂</button>
+            <button data-pov-side="R" type="button">右側手臂</button>
+          </div>
+          <div class="sim-track" aria-hidden="true"><i id="pov-fill"></i></div>
+          <span id="pov-time" class="muted small num">0:00</span>
         </div>
-        <div id="big-screen" class="screen big"></div>
+
+        <div class="pov-grid">
+          <figure class="pov-pane">
+            <div id="pov-view" class="pov-view"></div>
+            <figcaption><b>廠房實境・師傅肩後視角</b><span>拖曳旋轉；螢幕在工具正上方、面向師傅</span></figcaption>
+          </figure>
+          <figure class="device-wrap">
+            <div id="device" class="device notes">
+              <div class="device-mount" aria-hidden="true"><i class="tube"></i><i class="clamp"></i><i class="arm"></i></div>
+              <div class="device-body">
+                <span class="screw s1"></span><span class="screw s2"></span><span class="screw s3"></span><span class="screw s4"></span>
+                <div class="device-glass">
+                  <canvas id="device-canvas" width="960" height="640" aria-label="手臂螢幕畫面"></canvas>
+                  <span class="note n1">1</span><span class="note n2">2</span><span class="note n3">3</span><span class="note n4">4</span><span class="note n5">5</span>
+                </div>
+                <div class="device-foot"><span class="led"></span><span>10.1" 工業級・IP65</span><span id="device-side">左側手臂</span></div>
+              </div>
+            </div>
+            <figcaption class="device-cap">
+              <div class="device-tools">
+                <label class="toggle"><input type="checkbox" id="device-notes" checked><span></span>顯示畫面說明</label>
+                <button id="device-full" class="btn" type="button">全螢幕</button>
+              </div>
+              <ol class="legend-list">
+                <li><b>1</b>目前步驟：A 第一階段、B 承盤下降、C 第二階段</li>
+                <li><b>2</b>工具狀態：可鎖附、鎖附中、已鎖定</li>
+                <li><b>3</b>這一階段還剩幾秒，快到時變黃</li>
+                <li><b>4</b>這一側每顆螺絲：綠＝OK、紅＝NG、白框＝下一顆</li>
+                <li><b>5</b>出錯時整面變色，寫出原因與「怎麼修正」</li>
+              </ol>
+            </figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sec">螢幕給師傅的作用</h3>
+        <p class="sec-lead">下面六個畫面都是同一套狀態機在該時刻的真實輸出，點「在上面播放這一段」可以看師傅當下的反應。</p>
+        <div id="uses" class="uses"></div>
+
+        <div class="screen-why">
+          <section>
+            <h3 class="sec">為什麼裝在手臂上</h3>
+            <div class="table-wrap">
+              <table class="compare">
+                <thead><tr><th>位置</th><th>師傅要不要轉頭</th><th>晃動與成本</th><th>結論</th></tr></thead>
+                <tbody>
+                  <tr><th>站旁螢幕</th><td>要。彎腰鎖附時看不到，等待時也不一定看前方。</td><td>固定不晃</td><td>只能當輔助</td></tr>
+                  <tr><th>穿戴式裝置</th><td>要低頭看手腕</td><td>每人一台，充電管理</td><td><span class="chip chip-no">業主已否決</span></td></tr>
+                  <tr><th>工具本體</th><td>不用</td><td>跟著鎖附震動，容易壞</td><td><span class="chip chip-no">業主已否決</span></td></tr>
+                  <tr><th>手臂外管（本方案）</th><td>不用。跟著工具移動，就在工具旁邊。</td><td>不在工具本體；工業級防震螢幕</td><td><span class="chip chip-assumed">待業主確認</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section>
+            <h3 class="sec">硬體規格</h3>
+            <dl id="screen-spec" class="spec"></dl>
+            <p class="muted small">螢幕只顯示、不需操作，師傅不用多按任何按鈕。螢幕故障不影響工具連鎖，語音與握把燈仍會提示。</p>
+          </section>
+        </div>
       </div>
     </section>
 

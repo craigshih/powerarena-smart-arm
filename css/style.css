@@ -331,19 +331,6 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
 .screen.mini .scr-side { padding: 10px; }
 .screen.mini .scr-step { font-size: 1.25em; }
 
-.screen.big { font-size: clamp(15px, 1.55vw, 30px); border-radius: 16px; }
-.screen.big .scr-alarm { font-size: 1.9em; padding: .45em .8em; min-height: 2.4em; }
-.screen.big .scr-side { padding: 1em 1.1em; gap: .7em; }
-.screen.big .scr-step { font-size: 3.4em; }
-.screen.big .scr-title b { font-size: 1.9em; }
-.screen.big .scr-title span { font-size: 1em; }
-.screen.big .scr-meta { font-size: 1.15em; }
-.screen.big .pill { font-size: .8em; padding: .15em .7em; }
-.screen.big { min-height: calc((100dvh - var(--header-h) * var(--z)) / var(--z) - 130px); grid-template-rows: auto 1fr auto; }
-.screen.big .scr-zones { font-size: 1.05em; gap: .45em; }
-.screen.big .scr-foot { font-size: .95em; padding: .6em 1.1em; }
-.screen.big .tray-bar s { width: 8em; height: .45em; }
-.screen:fullscreen { border-radius: 0; border: 0; height: 100vh; align-content: stretch; grid-template-rows: auto 1fr auto; font-size: 2.1vw; }
 
 /* ── 文件型頁面 ─────────────────────── */
 .doc { min-height: calc(100dvh - var(--header-h) * var(--z)); }
@@ -477,6 +464,74 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .sim-cmp p:first-child i { background: #2a303a; color: #aab6c9; }
 .sim-cmp p:last-child i { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
 
+/* 手臂螢幕展示 */
+.pov-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pov-pane { margin: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); }
+.pov-view { position: relative; aspect-ratio: 4 / 3; overflow: hidden; }
+.pov-view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.pov-pane figcaption { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--line); }
+.pov-pane figcaption b { color: var(--accent); font-size: 14px; }
+.pov-pane figcaption span { color: var(--muted); font-size: 12.5px; }
+.device-wrap {
+  margin: 0; padding: 0 22px 18px; border: 1px solid var(--line); border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255, 240, 205, .2), transparent 20%),
+    radial-gradient(circle at 82% 5%, rgba(220, 235, 255, .18), transparent 18%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, .1), transparent 32%),
+    linear-gradient(180deg, #2b323d 0%, #171c23 72%);
+}
+.device { position: relative; }
+.device-mount { position: relative; height: 72px; }
+.device-mount .tube { position: absolute; left: 50%; top: 0; width: 46px; height: 60px; margin-left: -23px; border-radius: 0 0 6px 6px; background: linear-gradient(90deg, #4d5561, #c9d0da 38%, #7d8693 68%, #444b56); }
+.device-mount .clamp { position: absolute; left: 50%; top: 30px; width: 70px; height: 18px; margin-left: -35px; border-radius: 4px; background: linear-gradient(#3b424d, #20252c); box-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
+.device-mount .arm { position: absolute; left: 50%; top: 46px; width: 30px; height: 28px; margin-left: -15px; background: linear-gradient(90deg, #262b32, #4a525e, #262b32); }
+.device-body {
+  position: relative; padding: 18px 18px 10px; border-radius: 18px; border: 1px solid #0b0d10;
+  background: linear-gradient(160deg, #3b4048, #1c1f24 55%, #111316);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -2px 0 rgba(0, 0, 0, .4);
+}
+.screw { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #a2abb6, #353b44); }
+.screw.s1 { top: 6px; left: 6px; } .screw.s2 { top: 6px; right: 6px; } .screw.s3 { bottom: 6px; left: 6px; } .screw.s4 { bottom: 6px; right: 6px; }
+.device-glass { position: relative; border-radius: 6px; overflow: hidden; background: #000; box-shadow: inset 0 0 0 2px #050607; }
+.device-glass canvas { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; }
+.device-glass::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(125deg, rgba(255, 255, 255, .11) 0%, rgba(255, 255, 255, 0) 36%); }
+.note {
+  display: none; position: absolute; width: 26px; height: 26px; border-radius: 50%; place-items: center;
+  background: var(--accent); color: #14181f; font-weight: 800; font-size: 14px; box-shadow: 0 0 0 3px rgba(0, 0, 0, .5);
+}
+.device.notes .note { display: grid; }
+.note.n1 { left: 1.5%; top: 2%; }
+.note.n2 { left: 21%; top: 23%; }
+.note.n3 { right: 1.5%; top: 2%; }
+.note.n4 { left: 50%; top: 39%; }
+.note.n5 { left: 1.5%; top: 72%; }
+.device-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 4px 0; font-size: 11px; letter-spacing: .04em; color: #8b93a0; }
+.device-foot .led { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+.device:fullscreen { display: grid; place-items: center; padding: 3vh 5vw; background: #0a0d12; }
+.device:fullscreen .device-mount { display: none; }
+.device:fullscreen .device-body { width: min(90vw, 132vh); }
+.device-cap { margin: 14px 0 0; }
+.device-tools { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.legend-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; color: #d4dcea; }
+.legend-list b { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 8px; border-radius: 50%; background: var(--accent); color: #14181f; font-size: 12px; }
+.sec-lead { color: #b9c4d6; margin: -4px 0 12px; max-width: 46em; }
+.uses { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.use { display: grid; grid-template-rows: auto 1fr; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+.use-shot { padding: 12px 12px 0; background: linear-gradient(180deg, #2b323d, #171c23); }
+.use-shot canvas { display: block; width: 100%; height: auto; border: 6px solid #1c1f24; border-bottom: 0; border-radius: 8px 8px 0 0; }
+.use-body { display: grid; gap: 8px; align-content: start; padding: 12px 14px 14px; }
+.use h4 { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.use h4 .n { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #1d2a40; color: var(--accent); font-size: 12px; }
+.use dl { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 4px 8px; margin: 0; font-size: 13px; }
+.use dt { color: var(--muted); }
+.use dd { margin: 0; color: #d4dcea; }
+.use-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.screen-why { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+.spec { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; margin: 0 0 10px; font-size: 13px; }
+.spec dt { color: var(--muted); }
+.spec dd { margin: 0; }
+.spec small { display: block; color: var(--faint); font-size: 12px; }
+
 /* ── 大螢幕：分段放寬 ─────────────── */
 @media (min-width: 1440px) { :root { --left-w: 288px; --right-w: 380px; } }
 @media (min-width: 1536px) { :root { --page-w: 1440px; } }
@@ -504,6 +559,8 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
   .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .principles { grid-template-columns: 1fr; }
   .sim-view { aspect-ratio: 1 / 1; }
+  .pov-grid, .screen-why { grid-template-columns: 1fr; }
+  .uses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .brand h1 { font-size: 15px; }
 }
 
@@ -544,12 +601,13 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 
   .scr-sides { grid-template-columns: 1fr; }
   .scr-side + .scr-side { border-left: 0; border-top: 1px solid #1f2a3d; }
-  .screen.big { font-size: 15px; }
-  .screen.big .scr-alarm { font-size: 20px; }
-  .screen.big .scr-step { font-size: 2.6em; }
-  .screen.big .scr-title b { font-size: 1.5em; }
   .screen-note { margin-left: 0; flex-basis: 100%; }
   .sim-grid { grid-template-columns: 1fr; }
+  .uses { grid-template-columns: 1fr; }
+  .device-wrap { padding: 0 12px 14px; }
+  .device-body { padding: 12px 12px 8px; border-radius: 14px; }
+  .note { width: 22px; height: 22px; font-size: 12px; }
+  .pov-view { aspect-ratio: 1 / 1; }
   .sim-cmp { grid-template-columns: 1fr; }
   .sim-kv { grid-template-columns: 7em minmax(0, 1fr); }
   .bubble { font-size: 11px; padding: 3px 8px; }

@@ -19,7 +19,7 @@ python3 -m http.server 8795
 - **手臂與情境**：3D 手臂（可旋轉、點部件看說明）＋ 7 種情境播放（中文語音，右上角可靜音）。師傅會依工具位置伸手、彎腰，等待時轉身做別的事，聽到提示會轉頭；視角可切左右手臂與左右工具特寫。
 - **現行 vs IoT 實境**：同一位師傅、同一段動作同時播兩次。左邊是現行手臂（工具隨時能轉、沒有提示與紀錄），右邊是 IoT 改良手臂；下方列出這個情境的差異與「兩邊不一樣的時刻」。
 - **師傅設定**：只設定扭力、容差、角度。
-- **手臂螢幕**：兩支手臂上螢幕的放大檢視（大字步驟、每顆螺絲狀態、警示與處置），可全螢幕。
+- **手臂螢幕**：給客戶看螢幕對師傅的作用。上方是廠房實境的師傅肩後視角（3D）與螢幕實機放大（標出畫面五個區塊），兩者同步播放情境、可全螢幕；下方六張卡片是狀態機在關鍵時刻的螢幕畫面（該鎖哪一顆、剩多少時間、哪一顆沒鎖好、被攔下的原因、不是自己的錯、鎖完確認），可一鍵跳到那一刻播放；最後是「為什麼裝在手臂上」與硬體規格（假設）。
 - **事後追溯**：每顆螺絲一筆履歷，可篩選、匯出 CSV／JSON。
 - **現況 vs 改良後**：對照三大痛點、三項原則、否決點子、故障對策。
 
@@ -71,12 +71,13 @@ arm.setState(state);
 arm.setToolTarget(new THREE.Vector3(x, y, z)); // 世界座標；setToolRest() 回待命
 arm.update(dt, time);                          // 每幀
 arm.getGrip();  arm.getToolTop();  arm.getControllerPos();   // 握把、工具頂端、控制器燈號的世界座標
+drawArmScreen(canvas.getContext('2d'), state, 'L');          // 把手臂螢幕畫面畫到任何 canvas（基準 480 × 320）
 ```
 
 - `js/arm-params.js`：所有數值、`ZONES`、`SEQUENCE`、`SPEC`、`boltPosition()`
 - `js/arm-logic.js`：純狀態機（不碰 DOM／Three.js），另有 `signalsFor(state)`（燈號）、`describe(state)`（螢幕文字）
 - `js/arm-model.js`：3D 模型、`ARM_PARTS`（改良點說明）
-- UI 層：`js/scenarios.js`（情境腳本與播放引擎）、`js/environment.js`（工站環境）、`js/operator.js`（會動的師傅 `createOperator({ side })`）、`js/sim.js`（現行 vs IoT 實境）、`js/main.js`、`index.html`、`css/`
+- UI 層：`js/scenarios.js`（情境腳本與播放引擎）、`js/environment.js`（工站環境）、`js/operator.js`（會動的師傅 `createOperator({ side })`）、`js/sim.js`（現行 vs IoT 實境）、`js/screen-view.js`（手臂螢幕展示）、`js/main.js`、`index.html`、`css/`
 
 承盤事件只由一側的實例記錄（`stationEvents: true`），另一側設 `false`，避免追溯資料重複。
 
