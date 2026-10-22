@@ -308,10 +308,13 @@ export function generateHistory({ count = 36, start = Date.parse('2026-10-21T08:
   const records = [];
   for (let n = 0; n < count; n++) {
     const id = plan[n % plan.length];
-    const epoch = start + n * 480 * 1000 + Math.floor(r() * 60) * 1000 + (n >= count / 2 ? 18 * 3600 * 1000 : 0);
+    // 前一半是早班（08:00 起），後一半是晚班（20:00 起），每台間隔約一個工站節拍
+    const night = n >= count / 2;
+    const k = night ? n - Math.ceil(count / 2) : n;
+    const epoch = start + k * 480 * 1000 + Math.floor(r() * 60) * 1000 + (night ? 12 * 3600 * 1000 : 0);
     const vin = `TWPA2026A${String(10001 + n * 7).padStart(8, '0')}`;
     records.push(...runHeadless(scenarioById(id), {
-      vin, epoch, spec, encoder: true, seed: 100 + n, operators: shifts[n >= count / 2 ? 1 : 0],
+      vin, epoch, spec, encoder: true, seed: 100 + n, operators: shifts[night ? 1 : 0],
     }));
   }
   return records;

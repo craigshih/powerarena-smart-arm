@@ -200,8 +200,8 @@ function buildEnvironment(root) {
   const face = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.34), new THREE.MeshBasicMaterial({ color: 0x1d2a40 }));
   face.position.set(0, H + 1.45, 0.021);
   scr.add(face);
-  scr.position.set(1.32, 0, 3.05);
-  scr.rotation.y = -Math.PI * 0.82;
+  scr.position.set(1.5, 0, 0.1);
+  scr.rotation.y = -Math.PI * 0.18;
   info(scr, { title: '站旁螢幕（輔助）', id: 'env-screen', rows: [['作用', '大字顯示目前步驟與醒目警示'], ['定位', '輔助：師傅不一定看前方，主要提示在工具握把與語音'], ['畫面', '見上方「站旁螢幕」分頁']] });
   root.add(scr);
   out.screenFace = face.material;
@@ -210,9 +210,9 @@ function buildEnvironment(root) {
 
 // ── 視角 ─────────────────────────────────────
 const PRESETS = {
-  orbit: { pos: [3.5, 4.4, 5.6], tgt: [0.15, 2.55, 1.5], fov: 42 },
-  arm: { pos: [2.5, 3.7, 3.6], tgt: [0.7, 2.85, 1.6], fov: 42 },
-  tool: { pos: [1.4, 2.65, 2.75], tgt: [0.6, 2.15, 1.6], fov: 40 },
+  orbit: { pos: [4.3, 4.9, 2.9], tgt: [0.1, 2.45, 1.45], fov: 42 },
+  arm: { pos: [-0.9, 3.9, 3.3], tgt: [0.75, 2.85, 1.5], fov: 42 },
+  tool: { pos: [-0.15, 2.7, 2.65], tgt: [0.62, 2.1, 1.55], fov: 40 },
   top: { pos: [0.01, 7.8, 1.7], tgt: [0, 2, 1.6], fov: 40 },
 };
 let tween = null;
@@ -349,7 +349,8 @@ const live = new Map(); // runId → 這次播放產生的事件紀錄
 
 function newRun(id) {
   const vin = `TWPA2026B${String(20000 + ui.runId).padStart(8, '0')}`;
-  return createRun(scenarioById(id), { encoder: ui.encoder, spec: currentSpec, vin, epoch: Date.now() });
+  ui.epoch = Date.now();
+  return createRun(scenarioById(id), { encoder: ui.encoder, spec: currentSpec, vin, epoch: ui.epoch });
 }
 
 function load(id, { autoplay = false } = {}) {
@@ -427,7 +428,7 @@ function consume(out, { silent = false } = {}) {
     const lv = { OK: 'ok', NG: 'alarm', BLOCKED: 'alarm', FAULT: 'fault', WARN: 'warn' }[r.result] ?? 'info';
     const where = r.zoneId ? ` · ${zoneById(r.zoneId).label}${r.boltIndex != null ? ` #${r.boltIndex + 1}` : ''}` : '';
     const val = r.torqueNm != null ? ` · ${r.torqueNm} N·m / ${r.angleDeg}°` : '';
-    ui.log.unshift({ sim: t, lv, text: `<b>${r.side}</b> ${meta.label}${where}${val}` });
+    ui.log.unshift({ sim: (Date.parse(r.ts) - ui.epoch) / 1000, lv, text: `<b>${r.side}</b> ${meta.label}${where}${val}` });
   }
   for (const a of out.alerts) {
     ui.voiceLine[a.side] = { text: a.say || a.text, level: a.level, t };
@@ -444,6 +445,7 @@ function consume(out, { silent = false } = {}) {
     if (m.target) arms[m.side].setToolTarget(toolPoint(m.target));
     else arms[m.side].setToolRest();
   }
+  ui.log.sort((a, b) => b.sim - a.sim);
   ui.log.length = Math.min(ui.log.length, 120);
   for (const side of ['L', 'R']) arms[side].setState(ui.run.states[side]);
   if (out.records.length || out.alerts.length || out.notes.length) ui.dirty = true;
