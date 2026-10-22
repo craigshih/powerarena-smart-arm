@@ -4,17 +4,22 @@
 
 ## 怎麼打開
 
+線上版：https://craigshih.github.io/powerarena-smart-arm/
+
+本機：
+
 ```bash
 python3 -m http.server 8795
 ```
 
-打開 http://localhost:8795 。因為使用 ES module，不能直接雙擊 `index.html`。可用網址 hash 直接開分頁：`#arm`、`#settings`、`#screen`、`#trace`、`#compare`。
+打開 http://localhost:8795 。因為使用 ES module，不能直接雙擊 `index.html`。可用網址 hash 直接開分頁：`#arm`、`#sim`、`#settings`、`#screen`、`#trace`、`#compare`。網址加 `?debug` 時可在主控台用 `__step(dt, n)` 手動推進畫面（背景分頁不跑動畫時測試用）。
 
 ## 畫面
 
-- **手臂與情境**：3D 手臂（可旋轉、點部件看說明）＋ 7 種情境播放（中文語音，右上角可靜音）。
+- **手臂與情境**：3D 手臂（可旋轉、點部件看說明）＋ 7 種情境播放（中文語音，右上角可靜音）。師傅會依工具位置伸手、彎腰，等待時轉身做別的事，聽到提示會轉頭；視角可切左右手臂與左右工具特寫。
+- **現行 vs IoT 實境**：同一位師傅、同一段動作同時播兩次。左邊是現行手臂（工具隨時能轉、沒有提示與紀錄），右邊是 IoT 改良手臂；下方列出這個情境的差異與「兩邊不一樣的時刻」。
 - **師傅設定**：只設定扭力、容差、角度。
-- **站旁螢幕**：大字步驟與警示，可全螢幕。
+- **手臂螢幕**：兩支手臂上螢幕的放大檢視（大字步驟、每顆螺絲狀態、警示與處置），可全螢幕。
 - **事後追溯**：每顆螺絲一筆履歷，可篩選、匯出 CSV／JSON。
 - **現況 vs 改良後**：對照三大痛點、三項原則、否決點子、故障對策。
 
@@ -31,6 +36,9 @@ python3 -m http.server 8795
 | 5 | 關節編碼器（選配，評估中） | ①②③ |
 | 6 | 承盤 PLC 訊號 I/O | ②③ |
 | 7 | 班長鑰匙開關（降級模式） | ③ |
+| 8 | 手臂螢幕（裝在平衡器外管下端，跟著工具移動、面向師傅） | ①③ |
+
+**手臂螢幕**：低頭看工具時螢幕就在視線裡，錯了當場看得到哪一顆、怎麼修正。螢幕裝在手臂外管上、不在工具本體；業主曾否決「在鎖附機器上加裝裝置」，這個位置是否可接受需再確認。
 
 **編碼器評估結論**：不違反原則一、二；原則三有風險但可控（輸送線位置補償、螺絲間距約 0.1 m、需定期校正）。建議只判到「區域」、列為第二期選配；編碼器故障時只關閉順序檢查，承盤連鎖照常。
 
@@ -54,6 +62,7 @@ import { createSmartArm } from './js/arm-model.js';
 import { createArmLogic } from './js/arm-logic.js';
 
 const arm = createSmartArm({ side: 'L' });   // THREE.Group，原點＝軌道吊點，預設已放在吊點
+// createSmartArm({ side, legacy: true }) 畫出現行手臂（沒有控制器、編碼器、LED 環、手臂螢幕）
 scene.add(arm);                               // 需要場景有 CSS2DRenderer 才看得到標籤
 const logic = createArmLogic({ side: 'L', vin, operator, epoch: Date.now() });
 
@@ -61,12 +70,13 @@ const { state, records, alerts } = logic.dispatch({ type: 'cycle:start', t: 0, t
 arm.setState(state);
 arm.setToolTarget(new THREE.Vector3(x, y, z)); // 世界座標；setToolRest() 回待命
 arm.update(dt, time);                          // 每幀
+arm.getGrip();  arm.getToolTop();  arm.getControllerPos();   // 握把、工具頂端、控制器燈號的世界座標
 ```
 
 - `js/arm-params.js`：所有數值、`ZONES`、`SEQUENCE`、`SPEC`、`boltPosition()`
 - `js/arm-logic.js`：純狀態機（不碰 DOM／Three.js），另有 `signalsFor(state)`（燈號）、`describe(state)`（螢幕文字）
 - `js/arm-model.js`：3D 模型、`ARM_PARTS`（改良點說明）
-- `js/scenarios.js`、`js/main.js`、`index.html`、`css/`：UI 層
+- UI 層：`js/scenarios.js`（情境腳本與播放引擎）、`js/environment.js`（工站環境）、`js/operator.js`（會動的師傅 `createOperator({ side })`）、`js/sim.js`（現行 vs IoT 實境）、`js/main.js`、`index.html`、`css/`
 
 承盤事件只由一側的實例記錄（`stationEvents: true`），另一側設 `false`，避免追溯資料重複。
 

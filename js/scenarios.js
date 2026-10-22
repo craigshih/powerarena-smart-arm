@@ -247,11 +247,12 @@ export function createRun(scenario, opts = {}) {
   }
 
   function advance(toT) {
-    const out = { records: [], alerts: [], notes: [], moves: [] };
+    const out = { records: [], alerts: [], notes: [], moves: [], steps: [] };
     toT = Math.min(toT, duration);
     while (idx < steps.length && steps[idx].t <= toT) {
       const st = steps[idx++];
       t = st.t;
+      out.steps.push(st);
       send('all', { type: 'timer' }, out);
       if (st.ev) {
         send(st.side, st.ev, out);

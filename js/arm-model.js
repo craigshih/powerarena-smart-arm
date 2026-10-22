@@ -7,12 +7,13 @@
 //   arm.update(dt, time);                        // 每幀呼叫：平滑移動、燈號閃爍
 //
 // 結構：台車（沿軌道 z 移動）→ 垂直柱 → J1 旋轉 → 第一節臂 → J2 旋轉 → 第二節臂
-//       → 平衡器（垂直伸縮）→ 鎖附工具。控制器固定在軌道吊架上，不跟著工具晃。
+//       → 平衡器（垂直伸縮）→ 鎖附工具。手臂螢幕裝在平衡器外管下端，跟著工具移動、面向師傅。
+//       控制器固定在軌道吊架上，不跟著工具晃。
 
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { P, armMount } from './arm-params.js';
-import { signalsFor } from './arm-logic.js';
+import { P, SEQUENCE, armMount, zoneById } from './arm-params.js';
+import { signalsFor, describe } from './arm-logic.js';
 
 export const PRINCIPLES = {
   1: { short: '不增加動作', title: '不違反人類自然行為、不增加成本', desc: '不能讓師傅多按按鈕，也不能讓他多看一個地方。' },
@@ -43,7 +44,7 @@ export const ARM_PARTS = [
   {
     key: 'controller', n: 4, title: '控制器三色燈＋喇叭', tag: '燈號喇叭', principles: [1, 3],
     what: '控制器固定在軌道吊架上，不在工具上，不會晃。喇叭播「提前鎖附！提前鎖附！」等語音，三色燈同步工位狀態。',
-    why: '師傅等待時不一定看前方，所以以聲音為主、燈號為輔，站旁螢幕只是輔助。',
+    why: '師傅等待時不一定看前方，所以以聲音為主、燈號為輔；要看細節時再看手臂螢幕。',
     fault: '每班開工自動自我檢查（燈號＋試播語音），異常即通知維護。',
   },
   {
@@ -62,7 +63,13 @@ export const ARM_PARTS = [
     key: 'key', n: 7, title: '班長鑰匙開關（降級模式）', tag: '鑰匙開關', principles: [3],
     what: '故障時由班長轉鑰匙切換，承盤連鎖暫停、回到現行作業方式，全程記錄 BYPASS 事件。',
     why: '妥善率：系統故障不會變成停線的理由，也清楚由誰負責切換。',
-    fault: '鑰匙由班長保管；降級期間站旁螢幕持續顯示「降級模式」。',
+    fault: '鑰匙由班長保管；降級期間手臂螢幕持續顯示「降級模式」。',
+  },
+  {
+    key: 'screen', n: 8, title: '手臂螢幕', tag: '手臂螢幕', principles: [1, 3],
+    what: '小螢幕裝在平衡器外管下端，跟著工具移動、面向師傅：大字顯示目前步驟、這一側每顆螺絲的狀態，錯誤時整面變色並寫出怎麼修正。',
+    why: '師傅低頭看工具時螢幕就在同一個視線裡，不用另外看站旁；錯了當場看得到是哪一顆、要怎麼處置。',
+    fault: '裝在手臂外管上、不在工具本體，選用工業級防震螢幕。螢幕故障不影響連鎖，語音與握把燈仍會提示。業主曾否決「在鎖附機器上加裝裝置」，裝在外管上是否可接受需再確認。',
   },
 ];
 
@@ -72,7 +79,7 @@ const BASE_PARTS = {
   balancer: { title: '平衡器', rows: [['作用', '抵銷工具重量，師傅只需輕推即可上下'], ['來源', '工廠原有平衡器']] },
 };
 
-const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦'];
+const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
 const LIGHT = { green: 0x3ccf6b, yellow: 0xf0b545, red: 0xe0303a, blue: 0x4ea8ff, off: 0x1e232c };
 
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.35, ...o });
@@ -99,7 +106,9 @@ function partInfo(key) {
   return { key, id: `arm-${key}`, title: b.title, rows: b.rows, principles: [] };
 }
 
-export function createSmartArm({ side = 'L', labels = true, mount = true } = {}) {
+// legacy: true 時畫出現行手臂（沒有控制器、編碼器、LED 環與扭力感測），給「現行 vs IoT」對比用。
+export function createSmartArm({ side = 'L', labels = true, mount = true, legacy = false } = {}) {
+  if (legacy) labels = false;
   const s = side === 'L' ? 1 : -1; // 外側（高台方向）的 x 符號
   const L1 = P.link1.v;
   const L2 = P.link2.v;
@@ -220,6 +229,30 @@ export function createSmartArm({ side = 'L', labels = true, mount = true } = {})
   wrist.add(tagPart(encZ, 'encoder'));
   encoders.push(encZ);
 
+  // 手臂螢幕：外管下端的支架，面向外側（師傅站的那一邊），略往上仰
+  const scr = { canvas: null, ctx: null, tex: null, key: '' };
+  const display = new THREE.Group();
+  display.position.set(s * 0.06, -0.03 - tube + 0.07, 0);
+  display.rotation.y = s * Math.PI / 2;
+  display.rotateX(-0.32);
+  if (!legacy) {
+    scr.canvas = document.createElement('canvas');
+    scr.canvas.width = 480;
+    scr.canvas.height = 320;
+    scr.ctx = scr.canvas.getContext('2d');
+    scr.tex = new THREE.CanvasTexture(scr.canvas);
+    scr.tex.colorSpace = THREE.SRGBColorSpace;
+    scr.tex.anisotropy = 4;
+    const scrParts = new THREE.Group();
+    scrParts.add(box(0.26, 0.18, 0.02, M.dark, 0, 0, 0.005));
+    scrParts.add(box(0.05, 0.04, 0.06, M.steel, 0, 0, -0.03));
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.16), new THREE.MeshBasicMaterial({ map: scr.tex, toneMapped: false }));
+    face.position.z = 0.0155;
+    scrParts.add(face);
+    display.add(tagPart(scrParts, 'screen'));
+    wrist.add(display);
+  }
+
   const tool = new THREE.Group(); // 原點 = 套筒尖端
   wrist.add(tool);
   const spinner = new THREE.Group();
@@ -242,12 +275,13 @@ export function createSmartArm({ side = 'L', labels = true, mount = true } = {})
   ring.position.y = 0.198;
   tool.add(tagPart(ring, 'ring'));
   const toolTag = addTag(tool, `工具 ${side}`, 'tag-tool', 0, toolLen + 0.08, 0);
+  numTag(display, 'screen', 0, 0.12, 0);
   numTag(tool, 'torque', -s * 0.11, 0.17, 0);
   numTag(tool, 'ring', -s * 0.11, 0.245, 0);
 
   // ── 控制器（固定在軌道吊架，不跟工具移動）──
   const ctrl = new THREE.Group();
-  ctrl.position.set(s * 0.17, 0, 2.7);
+  ctrl.position.set(s * 0.17, 0, -0.25); // 師傅身後，不擋視線
   root.add(ctrl);
   const cabY = -0.62;
   const cab = new THREE.Group();
@@ -321,8 +355,14 @@ export function createSmartArm({ side = 'L', labels = true, mount = true } = {})
   let tone = '';
 
   function setState(state) {
+    if (legacy) {
+      running = state.tool === 'RUNNING';
+      toolTag.textContent = `現行工具 ${side}・${running ? '鎖附中' : '隨時可轉'}`;
+      return;
+    }
     sig = signalsFor(state);
     running = state.tool === 'RUNNING';
+    drawScreen(state, sig);
     const next = sig.ring === 'red' ? 'tag-red' : sig.ring === 'yellow' ? 'tag-yellow' : sig.ring === 'green' || sig.ring === 'blue' ? 'tag-green' : '';
     if (next !== tone) {
       if (tone) toolTag.classList.remove(tone);
@@ -332,7 +372,92 @@ export function createSmartArm({ side = 'L', labels = true, mount = true } = {})
     toolTag.textContent = `工具 ${side}・${sig.label}`;
   }
 
+  // 螢幕內容：步驟、工具狀態、這一側每顆螺絲、警示與處置
+  const TONE = { orange: '#ff8a3d', yellow: '#f0b545', teal: '#3dd6d0', green: '#3ccf6b', muted: '#5d6a80' };
+  const RING = { green: '#3ccf6b', yellow: '#f0b545', red: '#e0303a', blue: '#4ea8ff', off: '#5d6a80' };
+  const FIX = {
+    EARLY_ATTEMPT: '放開扳機，等承盤降下',
+    SEQUENCE_ERROR: '先鎖亮白框的那一顆',
+    TIGHTEN_NG: '原地重鎖這一顆',
+    TIMEOUT: '盡快補完剩下的螺絲',
+    PHASE_WARNING: '加快完成這一階段',
+    AUTOMATION_FAULT: '不用處理，等班長復歸承盤',
+    TOOL_FAULT: '停止作業，通知班長',
+  };
+  function drawScreen(state, sigNow) {
+    if (!scr.ctx) return;
+    const d = describe(state);
+    const a = state.alarm;
+    const key = JSON.stringify([d, a?.type, a?.text, sigNow.label, state.bolts, state.expected, state.remaining == null ? null : Math.ceil(state.remaining)]);
+    if (key === scr.key) return;
+    scr.key = key;
+    const c = scr.ctx;
+    const W = scr.canvas.width;
+    const H = scr.canvas.height;
+    const bad = a && (a.level === 'alarm' || a.level === 'fault');
+    const warn = a && a.level === 'warn';
+    c.fillStyle = bad ? '#5c0d13' : warn ? '#4a3606' : '#070b11';
+    c.fillRect(0, 0, W, H);
+    const font = (px, w = 700) => `${w} ${px}px -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif`;
+    // 步驟
+    c.fillStyle = TONE[d.tone];
+    c.fillRect(16, 16, 96, 96);
+    c.fillStyle = '#0a0e14';
+    c.font = font(70, 800);
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(d.step, 64, 68);
+    c.textAlign = 'left';
+    c.fillStyle = '#ffffff';
+    c.font = font(40);
+    c.fillText(d.title, 128, 46);
+    c.fillStyle = RING[sigNow.ring];
+    c.font = font(28, 600);
+    c.fillText(`工具${sigNow.label}`, 128, 92);
+    if (state.remaining != null) {
+      c.textAlign = 'right';
+      c.fillStyle = state.timedOut ? '#ff6b73' : state.remaining <= P.phaseWarnLead.v ? '#f0b545' : '#8b98ad';
+      c.fillText(state.timedOut ? '超時' : `${Math.ceil(state.remaining)}s`, W - 18, 46);
+      c.textAlign = 'left';
+    }
+    // 螺絲
+    let y = 150;
+    c.font = font(26, 500);
+    for (const id of SEQUENCE[side]) {
+      const z = zoneById(id);
+      const cur = state.expected?.zoneId === id;
+      c.fillStyle = cur ? '#ffffff' : '#9aa6b8';
+      c.fillText(`${z.phase} ${z.label}`, 18, y);
+      state.bolts[id].forEach((b, i) => {
+        const x = W - 30 - (state.bolts[id].length - 1 - i) * 34;
+        c.beginPath();
+        c.arc(x, y, 12, 0, Math.PI * 2);
+        c.fillStyle = b === 'OK' ? '#3ccf6b' : b === 'NG' ? '#e0303a' : '#2a3448';
+        c.fill();
+        if (cur && state.expected.boltIndex === i && (state.phase === 'A' || state.phase === 'C')) {
+          c.lineWidth = 4;
+          c.strokeStyle = '#ffffff';
+          c.stroke();
+        }
+      });
+      y += 40;
+    }
+    // 警示與處置
+    if (a && a.level !== 'info') {
+      const by = H - 76;
+      c.fillStyle = bad ? '#e0303a' : '#f0b545';
+      c.fillRect(0, by, W, 76);
+      c.fillStyle = bad ? '#ffffff' : '#1a1407';
+      c.font = font(28);
+      c.fillText(a.text.length > 15 ? `${a.text.slice(0, 15)}…` : a.text, 16, by + 25);
+      c.font = font(24, 500);
+      c.fillText(`→ ${FIX[a.type] ?? '依提示處置'}`, 16, by + 58);
+    }
+    scr.tex.needsUpdate = true;
+  }
+
   function applyLights(time) {
+    if (legacy) return;
     const blinkOn = time % 0.8 < 0.45;
     const rc = LIGHT[sig.ring];
     const ringOn = sig.ring !== 'off' && (!sig.ringBlink || blinkOn);
@@ -391,10 +516,26 @@ export function createSmartArm({ side = 'L', labels = true, mount = true } = {})
     }
   }
 
+  // 握把、工具頂端、控制器燈號的世界座標（給師傅模型伸手與轉頭用）
+  const getGrip = (t = new THREE.Vector3()) => tool.localToWorld(t.set(s * 0.15, 0.25, 0));
+  const getToolTop = (t = new THREE.Vector3()) => tool.localToWorld(t.set(0, 0.33, 0));
+  const getControllerPos = (t = new THREE.Vector3()) => ctrl.localToWorld(t.set(0.09, cabY + 0.27, 0));
+
+  if (legacy) {
+    for (const m of encoders) m.removeFromParent();
+    ctrl.removeFromParent();
+    ring.visible = false;
+    transducer.material = M.body;
+    const info = { key: 'legacy', id: 'arm-legacy', title: '現行鎖附工具', principles: [],
+      rows: [['現況', '工具隨時都能轉，不知道承盤有沒有降下來'], ['回饋', '沒有燈號、語音，也不回報扭力與角度'], ['紀錄', '沒有每顆螺絲的履歷']] };
+    pickables.length = 0;
+    tool.traverse((o) => { if (o.isMesh) { o.userData.info = info; pickables.push(o); } });
+  }
+
   solve();
   return Object.assign(root, {
-    side, pickables, tags,
-    setState, setToolTarget, setToolRest, getToolTip, update,
+    side, legacy, pickables, tags,
+    setState, setToolTarget, setToolRest, getToolTip, getGrip, getToolTop, getControllerPos, update,
     setEncoderEnabled, setLabelsVisible, highlight,
   });
 }

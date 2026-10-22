@@ -6,6 +6,9 @@ import { P, SRC, ZONES, SEQUENCE, SEQUENCE_STATUS, SPEC, PARAM_GROUPS, zoneById,
 import { EVENT_TYPES, CATEGORY, RESULT_LABEL, signalsFor, describe } from './arm-logic.js';
 import { createSmartArm, ARM_PARTS, PRINCIPLES } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun, generateHistory } from './scenarios.js';
+import { buildEnvironment } from './environment.js';
+import { createOperator } from './operator.js';
+import { createSim } from './sim.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -58,161 +61,29 @@ controls.maxDistance = 16;
 const env = buildEnvironment(scene);
 const arms = { L: createSmartArm({ side: 'L', labels: true }), R: createSmartArm({ side: 'R', labels: false }) };
 scene.add(arms.L, arms.R);
-const pickables = [...env.pickables, ...arms.L.pickables, ...arms.R.pickables];
-
-function buildEnvironment(root) {
-  const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.1, ...o });
-  const M = {
-    floor: mat(0x0d1118, { roughness: 1 }),
-    platform: mat(0x2f3a52),
-    platformTop: mat(0x3d4a66, { roughness: 0.6 }),
-    rail: mat(0xf2c230, { roughness: 0.5 }),
-    steel: mat(0x6b7280, { metalness: 0.6, roughness: 0.4 }),
-    shell: mat(0x4d6680, { roughness: 0.45, metalness: 0.35, transparent: true, opacity: 0.22, depthWrite: false }),
-    engine: mat(0x8a929e, { roughness: 0.5, metalness: 0.6 }),
-    trans: mat(0x6f7884, { roughness: 0.5, metalness: 0.6 }),
-    bracket: mat(0x555d6b, { roughness: 0.5, metalness: 0.6 }),
-    tray: mat(0xd2552c, { roughness: 0.6 }),
-    worker: mat(0x7b8aa6),
-    workerDark: mat(0x3b4459),
-    hat: mat(0xf2c230, { roughness: 0.4 }),
-    skin: mat(0xd7b49a),
-    screenFrame: mat(0x1b1f27),
-  };
-  const box = (w, h, d, m, x = 0, y = 0, z = 0) => {
-    const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-    o.position.set(x, y, z);
-    o.castShadow = o.receiveShadow = true;
-    return o;
-  };
-  const span = (x0, x1, y0, y1, z0, z1, m) => box(x1 - x0, y1 - y0, z1 - z0, m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const out = { pickables: [], bolts: {} };
-  const info = (obj, data) => obj.traverse((o) => { if (o.isMesh) { o.userData.info = data; out.pickables.push(o); } });
-
-  const H = P.platformHeight.v;
-  const inner = P.platformInnerX.v;
-  const W = 0.9;
-  const z0 = -2.6;
-  const z1 = 4.2;
-
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), M.floor);
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  root.add(floor);
-  const grid = new THREE.GridHelper(40, 80, 0x1a2333, 0x131a26);
-  grid.position.y = 0.002;
-  root.add(grid);
-
-  for (const s of [1, -1]) {
-    const g = new THREE.Group();
-    const xa = s * inner;
-    const xb = s * (inner + W);
-    g.add(span(Math.min(xa, xb), Math.max(xa, xb), 0, H - 0.04, z0, z1, M.platform));
-    g.add(span(Math.min(xa, xb), Math.max(xa, xb), H - 0.04, H, z0, z1, M.platformTop));
-    const edge = span(Math.min(xa, xa + s * 0.04), Math.max(xa, xa + s * 0.04), H, H + 0.006, z0, z1, M.rail);
-    g.add(edge);
-    const xr = s * (inner + W - 0.03);
-    for (let z = z0 + 0.1; z <= z1; z += 1.35) g.add(box(0.04, 1.05, 0.04, M.rail, xr, H + 0.525, z));
-    g.add(span(xr - 0.02, xr + 0.02, H + 1.03, H + 1.07, z0 + 0.1, z1 - 0.1, M.rail));
-    info(g, { title: s > 0 ? '作業高台（左）' : '作業高台（右）', id: 'env-platform', rows: [['高台面', `y = ${H} m（已確認）`], ['內緣', `x = ±${inner} m（推算）`], ['現場', '空間狹窄，僅一人可側向通行']] });
-    root.add(g);
-
-    // 上方工具軌道與吊架（位置沿用場域模型）
-    const rail = new THREE.Group();
-    const rx = s * P.railX.v;
-    rail.add(span(rx - 0.05, rx + 0.05, P.railY.v + 0.01, P.railY.v + 0.11, -0.9, 3.6, M.rail));
-    for (const pz of [-0.85, 3.6]) rail.add(box(0.08, P.railY.v + 0.11 - H, 0.08, M.rail, s * (inner + 0.2), (P.railY.v + 0.11 + H) / 2, pz));
-    for (const pz of [-0.85, 3.6]) rail.add(span(Math.min(rx, s * (inner + 0.2)) - 0.04, Math.max(rx, s * (inner + 0.2)) + 0.04, P.railY.v + 0.05, P.railY.v + 0.11, pz - 0.04, pz + 0.04, M.rail));
-    info(rail, { title: '上方工具軌道', id: 'env-rail', rows: [['吊點', `x = ±${P.railX.v}、y = ${P.railY.v} m（沿用場域模型）`], ['說明', '手臂原點設在這個吊點，台車沿軌道前後移動']] });
-    root.add(rail);
-  }
-  root.add(span(-(inner + 0.24), inner + 0.24, P.railY.v + 0.05, P.railY.v + 0.12, 3.56, 3.64, M.rail));
-
-  // 車輛（簡化）、引擎、變速箱
-  const car = new THREE.Group();
-  for (const s of [1, -1]) car.add(span(s * 0.92, s * 0.965, 1.55, 2.37, -2.3, 2.3, M.shell));
-  car.add(span(-0.965, 0.965, 1.55, 1.8, 2.22, 2.32, M.shell));
-  car.add(span(-0.9, 0.9, 2.37, 2.95, -1.7, 0.55, M.shell));
-  info(car, { title: '車輛（簡化）', id: 'env-car', rows: [['引擎室寬', `${P.bayWidth.v} m（已確認）`], ['說明', '只畫出外形，方便看到手臂與鎖附區域']] });
-  root.add(car);
-  const pt = new THREE.Group();
-  pt.add(span(-0.35, 0.35, 1.52, 2.22, 1.45, 2.05, M.engine));
-  pt.add(span(0.2, 0.62, 1.55, 2.02, 1.05, 1.48, M.trans));
-  for (const s of [1, -1]) pt.add(span(Math.min(s * 0.35, s * 0.66), Math.max(s * 0.35, s * 0.66), 1.94, 2.02, 1.66, 1.9, M.bracket));
-  for (const s of [1, -1]) pt.add(span(Math.min(s * 0.62, s * 0.86), Math.max(s * 0.62, s * 0.86), 1.66, 1.72, 1.3, 1.7, M.bracket));
-  info(pt, { title: '引擎與變速箱', id: 'env-powertrain', rows: [['說明', '螺絲已預鎖在引擎上，師傅不需要逐顆拿螺絲'], ['問題', '不在拿螺絲，而在「用工具提早鎖」']] });
-  root.add(pt);
-
-  // 承盤
-  const tray = new THREE.Group();
-  tray.add(span(-0.62, 0.62, 1.44, 1.5, 1.15, 2.2, M.tray));
-  tray.add(box(0.12, 1.44, 0.12, M.steel, 0, 0.72, 1.68));
-  info(tray, { title: '自動升降承盤', id: 'env-tray', rows: [['下降', `${P.trayDrop.v} m、約 ${P.trayDuration.v} 秒（業主估）`], ['訊號', '「開始下降」「下降完成」接到兩側工具控制器'], ['逾時', `${P.trayFaultTimeout.v} 秒沒降到底判自動化錯誤（假設）`]] });
-  root.add(tray);
-  out.tray = tray;
-
-  // 鎖附區域與螺絲
-  const zones = new THREE.Group();
-  for (const z of ZONES) {
-    const color = z.phase === 'A' ? 0xff8a3d : 0x3dd6d0;
-    const geo = new THREE.BoxGeometry(...z.size);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.07, depthWrite: false }));
-    m.position.set(z.pos[0], H + z.pos[1], z.pos[2]);
-    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.75 })));
-    zones.add(m);
-    info(m, { title: `${z.label}（${z.id}）`, id: `zone-${z.id}`, rows: [['階段', z.phase === 'A' ? 'A 第一階段' : 'C 第二階段'], ['螺絲', `${z.bolts} 顆（假設）`], ['規格', `${SPEC[z.id].torque.v} N·m ±${SPEC[z.id].tol.v}%、${SPEC[z.id].angleMin.v}–${SPEC[z.id].angleMax.v}°（假設）`]] });
-    out.bolts[z.id] = Array.from({ length: z.bolts }, (_, i) => {
-      const b = new THREE.Mesh(new THREE.SphereGeometry(0.017, 14, 10), new THREE.MeshStandardMaterial({ color: 0x5d6a80, emissive: 0x000000, roughness: 0.4 }));
-      b.position.fromArray(boltPosition(z.id, i));
-      zones.add(b);
-      return b;
-    });
-  }
-  root.add(zones);
-  out.zones = zones;
-
-  // 作業員
-  for (const s of [1, -1]) {
-    const g = new THREE.Group();
-    for (const dx of [-0.09, 0.09]) g.add(box(0.12, 0.82, 0.14, M.workerDark, dx, 0.41, 0));
-    g.add(box(0.4, 0.6, 0.24, M.worker, 0, 1.12, 0));
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 20, 14), M.skin);
-    head.position.y = 1.56;
-    g.add(head);
-    const hat = new THREE.Mesh(new THREE.SphereGeometry(0.125, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), M.hat);
-    hat.position.y = 1.6;
-    g.add(hat);
-    for (const dx of [-0.24, 0.24]) {
-      const a = box(0.09, 0.09, 0.5, M.worker, dx, 1.3, 0.2);
-      a.rotation.x = 0.5;
-      g.add(a);
-    }
-    g.position.set(s * (inner + 0.3), H, 1.55);
-    g.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2;
-    info(g, { title: s > 0 ? '師傅（左側）' : '師傅（右側）', id: 'env-operator', rows: [['身高', `${1.75} m（業主建議標準）`], ['動作', '和現在一樣：拿工具、對螺絲、扣扳機，不多按任何按鈕'], ['等待時', '會做別的事、不一定看前方，所以提示以聲音與工具本身為主']] });
-    root.add(g);
-  }
-
-  // 站旁螢幕（輔助）
-  const scr = new THREE.Group();
-  scr.add(box(0.04, 1.25, 0.04, M.steel, 0, H + 0.62, 0));
-  scr.add(box(0.66, 0.4, 0.04, M.screenFrame, 0, H + 1.45, 0));
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.34), new THREE.MeshBasicMaterial({ color: 0x1d2a40 }));
-  face.position.set(0, H + 1.45, 0.021);
-  scr.add(face);
-  scr.position.set(1.5, 0, 0.1);
-  scr.rotation.y = -Math.PI * 0.18;
-  info(scr, { title: '站旁螢幕（輔助）', id: 'env-screen', rows: [['作用', '大字顯示目前步驟與醒目警示'], ['定位', '輔助：師傅不一定看前方，主要提示在工具握把與語音'], ['畫面', '見上方「站旁螢幕」分頁']] });
-  root.add(scr);
-  out.screenFace = face.material;
-  return out;
+// 會動的師傅：依工具位置伸手、彎腰；等待時轉身做別的事；聽到提示會轉頭
+const ops = { L: createOperator({ side: 'L' }), R: createOperator({ side: 'R' }) };
+scene.add(ops.L, ops.R);
+const opMeshes = [];
+for (const side of ['L', 'R']) {
+  const info = { title: side === 'L' ? '師傅（左側）' : '師傅（右側）', id: 'env-operator', rows: [
+    ['身高', `1.75 m（業主建議標準）`],
+    ['動作', '和現在一樣：拿工具、對螺絲、扣扳機，不多按任何按鈕'],
+    ['等待時', '會轉身做別的事、不一定看前方，所以提示以聲音與工具本身為主'],
+    ['看螢幕', '手臂螢幕跟著工具移動，低頭看工具時就在視線裡'],
+  ] };
+  ops[side].traverse((o) => { if (o.isMesh) { o.userData.info = info; opMeshes.push(o); } });
 }
+const pickables = [...env.pickables, ...arms.L.pickables, ...arms.R.pickables, ...opMeshes];
 
 // ── 視角 ─────────────────────────────────────
 const PRESETS = {
   orbit: { pos: [4.3, 4.9, 2.9], tgt: [0.1, 2.45, 1.45], fov: 42 },
-  arm: { pos: [-0.9, 3.9, 3.3], tgt: [0.75, 2.85, 1.5], fov: 42 },
-  tool: { pos: [-0.15, 2.7, 2.65], tgt: [0.62, 2.1, 1.55], fov: 40 },
+  armL: { pos: [-0.9, 3.9, 3.3], tgt: [0.75, 2.85, 1.5], fov: 42 },
+  armR: { pos: [0.9, 3.9, 3.3], tgt: [-0.75, 2.85, 1.5], fov: 42 },
+  // 從師傅肩膀後方看：看得到手臂螢幕正面、握把燈與螺絲
+  toolL: { pos: [1.55, 4.15, 2.85], tgt: [0.62, 2.55, 1.5], fov: 40 },
+  toolR: { pos: [-1.55, 4.15, 2.85], tgt: [-0.62, 2.55, 1.5], fov: 40 },
   top: { pos: [0.01, 7.8, 1.7], tgt: [0, 2, 1.6], fov: 40 },
 };
 let tween = null;
@@ -432,6 +303,7 @@ function consume(out, { silent = false } = {}) {
   }
   for (const a of out.alerts) {
     ui.voiceLine[a.side] = { text: a.say || a.text, level: a.level, t };
+    if (!silent) ops[a.side].say(`「${a.say || a.text}」`, a.level === 'info' ? 'info' : 'voice', 3.2);
     if (!silent) {
       if (a.level !== 'info') chime(a.level);
       speak(a.say, LEVEL_RANK[a.level] >= 2);
@@ -509,7 +381,7 @@ function renderTimeline() {
   $('#t-time').textContent = `${fmtT(t)} / ${fmtT(duration)}`;
 }
 
-// ── 站旁螢幕（迷你與全頁共用）────────────────────
+// ── 手臂螢幕（迷你與全頁共用）────────────────────
 function screenHtml() {
   const run = ui.run;
   const st = run.states;
@@ -644,7 +516,8 @@ function renderParams() {
 }
 
 // ── 畫面切換 ─────────────────────────────────
-const VIEWS = ['arm', 'settings', 'screen', 'trace', 'compare'];
+const VIEWS = ['arm', 'sim', 'settings', 'screen', 'trace', 'compare'];
+let sim = null;
 let viewNow = 'arm';
 function go(v, { push = true } = {}) {
   if (!VIEWS.includes(v)) v = 'arm';
@@ -655,6 +528,11 @@ function go(v, { push = true } = {}) {
   if (push && location.hash !== `#${v}`) history.replaceState(null, '', `#${v}`);
   $(`[data-go="${v}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   if (v === 'arm') requestAnimationFrame(resize);
+  if (v === 'sim') {
+    pause();
+    sim ||= createSim({ $, esc, speak, chime, unlockAudio, getSpec: () => currentSpec });
+    requestAnimationFrame(sim.resize);
+  } else sim?.pause();
   if (v === 'trace') renderTrace();
   if (v === 'settings') renderSettings();
   if (v !== 'arm') window.scrollTo(0, 0);
@@ -668,7 +546,7 @@ navScroll.addEventListener('scroll', navEnd, { passive: true });
 // 比較頁的情境連結
 $$('[data-play]').forEach((b) => b.addEventListener('click', () => { go('arm'); load(b.dataset.play, { autoplay: true }); }));
 
-// 站旁螢幕頁
+// 手臂螢幕頁
 $('#screen-scenario').addEventListener('change', (e) => load(e.target.value, { autoplay: true }));
 $('#screen-play').addEventListener('click', () => (ui.playing ? pause() : play()));
 $('#screen-restart').addEventListener('click', () => load(ui.scenarioId, { autoplay: true }));
@@ -921,9 +799,10 @@ new ResizeObserver(resize).observe(viewport);
 const clock = new THREE.Clock();
 let uiTimer = 0;
 const boltColor = { PENDING: 0x4a5568, OK: 0x3ccf6b, NG: 0xe0303a };
-function frame() {
-  const dt = Math.min(clock.getDelta(), 0.1);
-  const time = clock.elapsedTime;
+let elapsed = 0;
+function step(dt) {
+  elapsed += dt;
+  const time = elapsed;
   tick(dt);
 
   if (viewNow === 'arm') {
@@ -937,8 +816,17 @@ function frame() {
       if (tween.t >= 1) tween = null;
     }
     controls.update();
-    arms.L.update(dt, time);
-    arms.R.update(dt, time);
+    for (const side of ['L', 'R']) {
+      arms[side].update(dt, time);
+      const target = ui.run.targets[side];
+      const a = ui.run.states[side].alarm;
+      ops[side].update(dt, time, {
+        mode: target ? 'work' : 'wait',
+        grip: target ? arms[side].getGrip() : null,
+        top: target ? arms[side].getToolTop() : null,
+        react: a && a.level !== 'info' && ui.run.t - a.at < 2.5 ? arms[side].getControllerPos() : null,
+      });
+    }
     // 承盤與螺絲狀態
     env.tray.position.y = -P.trayDrop.v * ui.run.trayPos;
     const pulse = 0.5 + 0.5 * Math.sin(time * 6);
@@ -954,11 +842,11 @@ function frame() {
         });
       }
     }
-    const lv = Math.max(...['L', 'R'].map((k) => LEVEL_RANK[ui.run.states[k].alarm?.level] ?? -1));
-    env.screenFace.color.setHex(lv >= 2 ? (time % 0.8 < 0.45 ? 0xe0303a : 0x5a1016) : lv === 1 ? 0xf0b545 : 0x1d4a34);
     renderer.render(scene, view);
     labelRenderer.render(scene, view);
   }
+
+  if (viewNow === 'sim' && sim) sim.frame(dt, time);
 
   uiTimer += dt;
   if (ui.dirty || uiTimer > 0.2) {
@@ -973,8 +861,13 @@ function frame() {
     }
     if (viewNow === 'screen') paint($('#big-screen'), screenHtml());
   }
+}
+function frame() {
+  step(Math.min(clock.getDelta(), 0.1));
   requestAnimationFrame(frame);
 }
+// 測試用：網址加 ?debug 時可用 __step(dt, n) 手動推進畫面（背景分頁不跑動畫時）
+if (new URLSearchParams(location.search).has('debug')) window.__step = (dt = 1 / 30, n = 1) => { for (let i = 0; i < n; i++) step(dt); };
 
 // ── 啟動 ─────────────────────────────────────
 renderParts();

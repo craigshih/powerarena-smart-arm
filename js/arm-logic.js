@@ -466,7 +466,7 @@ export function signalsFor(state) {
   return { ring, ringBlink, stack, haptic, label };
 }
 
-// 站旁螢幕的大字步驟
+// 手臂螢幕的大字步驟
 export function describe(state) {
   const tray = { UP: '承盤撐起', LOWERING: '承盤下降中', DOWN: '承盤已下降', STUCK: '承盤卡住' }[state.tray];
   switch (state.phase) {

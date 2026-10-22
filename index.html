@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>改良版鎖附手臂</title>
-  <meta name="description" content="引擎組裝站 IoT 防錯提案：改良版懸吊鎖附手臂的 3D 模型、七種情境播放、師傅設定、站旁螢幕與事後追溯。">
+  <meta name="description" content="引擎組裝站 IoT 防錯提案：改良版懸吊鎖附手臂的 3D 模型、七種情境播放、現行與 IoT 手臂的實境對比、師傅設定、手臂螢幕與事後追溯。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0e14'/%3E%3Cpath d='M6 7h20M11 7v5l7 3v6' stroke='%23f2c230' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Crect x='15' y='21' width='6' height='6' rx='1.5' fill='%233ccf6b'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
@@ -26,8 +26,9 @@
     <nav class="nav" id="nav" aria-label="畫面">
       <div class="nav-scroll">
         <button data-go="arm" type="button">手臂與情境</button>
+        <button data-go="sim" type="button">現行 vs IoT 實境</button>
         <button data-go="settings" type="button">師傅設定</button>
-        <button data-go="screen" type="button">站旁螢幕</button>
+        <button data-go="screen" type="button">手臂螢幕</button>
         <button data-go="trace" type="button">事後追溯</button>
         <button data-go="compare" type="button">現況 vs 改良後</button>
       </div>
@@ -58,9 +59,11 @@
           <h2>視角</h2>
           <div class="seg-grid">
             <button data-preset="orbit" type="button">全景</button>
-            <button data-preset="arm" type="button">左手臂</button>
-            <button data-preset="tool" type="button">工具特寫</button>
             <button data-preset="top" type="button">由上往下</button>
+            <button data-preset="armL" type="button">左手臂</button>
+            <button data-preset="armR" type="button">右手臂</button>
+            <button data-preset="toolL" type="button">左工具特寫</button>
+            <button data-preset="toolR" type="button">右工具特寫</button>
           </div>
         </section>
       </aside>
@@ -118,6 +121,49 @@
       </aside>
     </section>
 
+    <!-- ── 現行 vs IoT 實境 ───────────────── -->
+    <section class="view doc" data-view="sim" aria-label="現行與 IoT 手臂實境對比" hidden>
+      <div class="page wide">
+        <header class="page-head">
+          <h2>現行手臂 vs IoT 手臂：同一位師傅、同一段動作</h2>
+          <p>左邊是現在的手臂：工具隨時都能轉，沒有提示也沒有紀錄。右邊是連上 IoT 的改良手臂。兩邊師傅的動作完全一樣，差別只在工具與手臂的反應。拖曳任一畫面，兩邊一起轉。</p>
+        </header>
+        <div class="screen-bar">
+          <label class="select"><span class="muted small">情境</span><select id="sim-scenario"></select></label>
+          <button id="sim-play" class="btn primary" type="button">播放</button>
+          <button id="sim-restart" class="btn" type="button">從頭</button>
+          <div class="seg" role="group" aria-label="觀看哪一側">
+            <button data-sim-side="L" type="button" class="on">左側師傅</button>
+            <button data-sim-side="R" type="button">右側師傅</button>
+          </div>
+          <div class="seg" role="group" aria-label="播放速度">
+            <button data-sim-speed="1" type="button">1×</button>
+            <button data-sim-speed="2" type="button" class="on">2×</button>
+            <button data-sim-speed="4" type="button">4×</button>
+          </div>
+          <div class="sim-track" aria-hidden="true"><i id="sim-fill"></i></div>
+          <span id="sim-time" class="muted small num">0:00</span>
+        </div>
+        <div class="sim-grid">
+          <figure class="sim-pane legacy">
+            <figcaption><b>現行手臂</b><span>工具隨時能轉・沒有提示・沒有紀錄</span></figcaption>
+            <div id="sim-view-old" class="sim-view"></div>
+            <div id="sim-status-old" class="sim-status"></div>
+          </figure>
+          <figure class="sim-pane iot">
+            <figcaption><b>IoT 改良手臂</b><span>承盤連鎖・扭力回報・手臂螢幕與語音</span></figcaption>
+            <div id="sim-view-iot" class="sim-view"></div>
+            <div id="sim-status-iot" class="sim-status"></div>
+          </figure>
+        </div>
+        <h3 class="sec">這個情境的差異</h3>
+        <div class="table-wrap"><table id="sim-outcome" class="compare"></table></div>
+        <h3 class="sec">兩邊不一樣的時刻</h3>
+        <ol id="sim-diff" class="sim-diff"></ol>
+        <p class="muted small">「現行手臂」的反應依訪綱理解整理，待業主確認。</p>
+      </div>
+    </section>
+
     <!-- ── 師傅設定 ───────────────────────── -->
     <section class="view doc" data-view="settings" aria-label="師傅設定" hidden>
       <div class="page">
@@ -155,8 +201,8 @@
       </div>
     </section>
 
-    <!-- ── 站旁螢幕 ───────────────────────── -->
-    <section class="view doc screen-view" data-view="screen" aria-label="站旁螢幕" hidden>
+    <!-- ── 手臂螢幕 ───────────────────────── -->
+    <section class="view doc screen-view" data-view="screen" aria-label="手臂螢幕" hidden>
       <div class="page wide">
         <div class="screen-bar">
           <label class="select">
@@ -166,7 +212,7 @@
           <button id="screen-play" class="btn primary" type="button">播放</button>
           <button id="screen-restart" class="btn" type="button">從頭</button>
           <button id="screen-full" class="btn" type="button">全螢幕</button>
-          <span class="muted small screen-note">站旁螢幕只是輔助，主要提示在工具握把與語音。</span>
+          <span class="muted small screen-note">兩支手臂各有一面螢幕，裝在平衡器外管下端、跟著工具移動；這裡是放大檢視。</span>
         </div>
         <div id="big-screen" class="screen big"></div>
       </div>
@@ -295,7 +341,7 @@
             <tbody>
               <tr><th>按鈕節點</th><td><span class="chip chip-no">否決</span></td><td>不新增按鈕；致能由承盤訊號自動完成。</td></tr>
               <tr><th>穿戴式裝置</th><td><span class="chip chip-no">否決</span></td><td>不需要穿戴；提示在工具握把與喇叭。</td></tr>
-              <tr><th>在鎖附機器上加裝裝置</th><td><span class="chip chip-no">否決</span></td><td>不加裝外掛。感測器與 LED 環是電動鎖附工具的內建規格；控制器、編碼器裝在固定的軌道與手臂結構上。</td></tr>
+              <tr><th>在鎖附機器上加裝裝置</th><td><span class="chip chip-no">否決</span></td><td>不在工具本體加裝外掛。感測器與 LED 環是電動鎖附工具的內建規格；控制器、編碼器裝在軌道與手臂結構上。手臂螢幕裝在平衡器外管，<b>是否可接受需再向業主確認</b>。</td></tr>
               <tr><th>螺絲秤、電磁螺絲盒</th><td><span class="chip chip-no">否決</span></td><td>螺絲已預鎖；本方案處理的是「用工具提早鎖」，不是「拿螺絲」。</td></tr>
               <tr><th>涼感計畫</th><td><span class="chip chip-no">否決</span></td><td>無關。</td></tr>
               <tr><th>鎖附安全閘</th><td><span class="chip chip-assumed">待確認</span></td><td>不需要實體閘門：工具鎖定就是軟體閘，不佔現場空間。</td></tr>
