@@ -531,9 +531,9 @@ const VIEWS = ['product', 'arm', 'sim', 'settings', 'screen', 'trace', 'compare'
 let sim = null;
 let screenView = null;
 let productView = null;
-let viewNow = 'arm';
+let viewNow = 'product';
 function go(v, { push = true } = {}) {
-  if (!VIEWS.includes(v)) v = 'arm';
+  if (!VIEWS.includes(v)) v = 'product';
   viewNow = v;
   document.body.dataset.view = v;
   $$('main > .view').forEach((s) => (s.hidden = s.dataset.view !== v));
@@ -893,6 +893,6 @@ renderParams();
 renderTraceSelects();
 goPreset('orbit', true);
 load(ui.scenarioId);
-go(location.hash.slice(1) || 'arm', { push: false });
+go(location.hash.slice(1) || 'product', { push: false }); // 預設打開手臂介紹
 navEnd();
 requestAnimationFrame(frame);

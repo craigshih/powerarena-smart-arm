@@ -12,7 +12,7 @@
 python3 -m http.server 8795
 ```
 
-打開 http://localhost:8795 。因為使用 ES module，不能直接雙擊 `index.html`。可用網址 hash 直接開分頁：`#product`、`#arm`、`#sim`、`#settings`、`#screen`、`#trace`、`#compare`。網址加 `?debug` 時可在主控台用 `__step(dt, n)` 手動推進畫面（背景分頁不跑動畫時測試用）。
+打開 http://localhost:8795 。因為使用 ES module，不能直接雙擊 `index.html`。網站預設打開「手臂介紹」。可用網址 hash 直接開分頁：`#product`、`#arm`、`#sim`、`#settings`、`#screen`、`#trace`、`#compare`。網址加 `?debug` 時可在主控台用 `__step(dt, n)` 手動推進畫面（背景分頁不跑動畫時測試用）。
 
 ## 畫面
 
