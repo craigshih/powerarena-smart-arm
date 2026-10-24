@@ -12,10 +12,11 @@
 python3 -m http.server 8795
 ```
 
-打開 http://localhost:8795 。因為使用 ES module，不能直接雙擊 `index.html`。可用網址 hash 直接開分頁：`#arm`、`#sim`、`#settings`、`#screen`、`#trace`、`#compare`。網址加 `?debug` 時可在主控台用 `__step(dt, n)` 手動推進畫面（背景分頁不跑動畫時測試用）。
+打開 http://localhost:8795 。因為使用 ES module，不能直接雙擊 `index.html`。可用網址 hash 直接開分頁：`#product`、`#arm`、`#sim`、`#settings`、`#screen`、`#trace`、`#compare`。網址加 `?debug` 時可在主控台用 `__step(dt, n)` 手動推進畫面（背景分頁不跑動畫時測試用）。
 
 ## 畫面
 
+- **手臂介紹**：只有手臂本身，放在展示台上。以新款（含手臂螢幕）為主，可切舊款或兩支並排對比、自動旋轉、標示新增部件；點 3D 上的編號或右側清單看每個新功能的「舊款 vs 新款」；下方狀態按鈕（可鎖附、鎖附中、等承盤、提前鎖附、扭力不足、工具故障、本車完成）把新舊兩支手臂切到同一時刻比較；最後是新舊對照表、沿用 vs 新增部件與手臂尺寸。
 - **手臂與情境**：3D 手臂（可旋轉、點部件看說明）＋ 7 種情境播放（中文語音，右上角可靜音）。師傅會依工具位置伸手、彎腰，等待時轉身做別的事，聽到提示會轉頭；視角可切左右手臂與左右工具特寫；勾選「出錯時鏡頭對準出錯位置」時，鏡頭會自動轉到出錯的那一側。
 - **3D 示警**：七種情境各有自己的顏色、圖示與標記，畫面邊框也跟著變色——提前鎖附（紅，螺絲打叉＋承盤框「承盤未下降」）、順序錯誤（洋紅，錯的區域打叉、箭頭指向綠圈那顆）、扭力不足（紅，NG 那顆脈動並寫出實際扭力與下限）、即將超時／超時（黃／橘，下一顆外圍倒數圈）、自動化錯誤（紫，整個承盤框起來）、工具錯誤（橘，工具外圍光暈）、正常（每鎖好一顆冒出綠勾與扭力，完成時「本車完成」）。「現行 vs IoT」頁只有 IoT 那一側有示警。
 - **車體輸送滑軌**：坑道地面兩條導軌、枕木、承載台車與行進方向箭頭（原型中車輛靜止顯示）。
@@ -79,7 +80,7 @@ drawArmScreen(canvas.getContext('2d'), state, 'L');          // 把手臂螢幕�
 - `js/arm-params.js`：所有數值、`ZONES`、`SEQUENCE`、`SPEC`、`boltPosition()`
 - `js/arm-logic.js`：純狀態機（不碰 DOM／Three.js），另有 `signalsFor(state)`（燈號）、`describe(state)`（螢幕文字）
 - `js/arm-model.js`：3D 模型、`ARM_PARTS`（改良點說明）
-- UI 層：`js/scenarios.js`（情境腳本與播放引擎）、`js/environment.js`（工站環境）、`js/operator.js`（會動的師傅 `createOperator({ side })`）、`js/sim.js`（現行 vs IoT 實境）、`js/screen-view.js`（手臂螢幕展示）、`js/alert-fx.js`（3D 示警 `createAlertFx(scene)`）、`js/main.js`、`index.html`、`css/`
+- UI 層：`js/scenarios.js`（情境腳本與播放引擎）、`js/environment.js`（工站環境）、`js/operator.js`（會動的師傅 `createOperator({ side })`）、`js/sim.js`（現行 vs IoT 實境）、`js/screen-view.js`（手臂螢幕展示）、`js/alert-fx.js`（3D 示警 `createAlertFx(scene)`）、`js/product-view.js`（手臂介紹）、`js/main.js`、`index.html`、`css/`
 
 承盤事件只由一側的實例記錄（`stationEvents: true`），另一側設 `false`，避免追溯資料重複。
 

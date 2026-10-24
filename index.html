@@ -25,6 +25,7 @@
     </div>
     <nav class="nav" id="nav" aria-label="畫面">
       <div class="nav-scroll">
+        <button data-go="product" type="button">手臂介紹</button>
         <button data-go="arm" type="button">手臂與情境</button>
         <button data-go="sim" type="button">現行 vs IoT 實境</button>
         <button data-go="settings" type="button">師傅設定</button>
@@ -41,6 +42,61 @@
   </header>
 
   <main>
+    <!-- ── 手臂介紹 ───────────────────────── -->
+    <section class="view doc" data-view="product" aria-label="手臂介紹" hidden>
+      <div class="page wide">
+        <header class="page-head">
+          <h2>改良版鎖附手臂</h2>
+          <p>沿用工廠原有的軌道、台車、兩節臂與平衡器，換上會判斷時機的鎖附工具，再加上控制器、手臂螢幕與感測器。師傅的動作不變，多出來的是 8 個新功能。</p>
+        </header>
+        <div class="product-grid">
+          <figure class="product-stage">
+            <div class="product-bar">
+              <div class="seg" role="group" aria-label="顯示哪一款">
+                <button data-pmode="iot" type="button" class="on">新款</button>
+                <button data-pmode="old" type="button">舊款</button>
+                <button data-pmode="both" type="button">並排對比</button>
+              </div>
+              <label class="toggle"><input type="checkbox" id="product-spin" checked><span></span>自動旋轉</label>
+              <label class="toggle"><input type="checkbox" id="product-new"><span></span>標示新增部件</label>
+            </div>
+            <div id="product-view" class="product-view show-tags"></div>
+            <div class="demo">
+              <div class="demo-head"><b>狀態示範</b><span class="muted small">新舊兩支手臂切到同一時刻，看工具、燈號與螢幕的差別</span></div>
+              <div id="demo-list" class="demo-list"></div>
+              <div class="demo-cmp"><p id="demo-old"></p><p id="demo-iot"></p></div>
+            </div>
+          </figure>
+          <aside class="feature-panel">
+            <div id="feature-detail"></div>
+            <h4>8 個新功能（點編號或 3D 標籤）</h4>
+            <div id="feature-list" class="feature-list"></div>
+          </aside>
+        </div>
+
+        <h3 class="sec">新舊對照</h3>
+        <div class="table-wrap"><table id="product-table" class="compare"></table></div>
+
+        <div class="product-foot">
+          <section>
+            <h3 class="sec">沿用 vs 新增</h3>
+            <div class="parts-cols">
+              <div class="card"><h4>沿用工廠原有</h4>
+                <ul class="tight"><li>上方工具軌道與吊點</li><li>軌道台車</li><li>兩節水平臂</li><li>平衡器</li></ul>
+                <p class="muted small">師傅熟悉的手感不變，也不用重新安裝軌道。</p></div>
+              <div class="card new"><h4>新增</h4>
+                <ul class="tight"><li>智慧鎖附工具：內建致能／鎖定、扭力角度感測、握把 LED 環與震動</li><li>控制器：三色燈、喇叭、班長鑰匙開關、承盤 PLC 訊號</li><li>手臂螢幕：裝在平衡器外管下端</li><li>關節編碼器（選配，評估中）</li></ul></div>
+            </div>
+          </section>
+          <section>
+            <h3 class="sec">手臂尺寸</h3>
+            <dl id="product-spec" class="spec"></dl>
+            <p class="muted small">尺寸集中在 js/arm-params.js，黃色標示為假設值。</p>
+          </section>
+        </div>
+      </div>
+    </section>
+
     <!-- ── 手臂與情境 ───────────────────────── -->
     <section class="view app" data-view="arm" aria-label="手臂與情境">
       <aside class="side side-left">

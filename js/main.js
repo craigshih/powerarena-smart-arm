@@ -11,6 +11,7 @@ import { createOperator } from './operator.js';
 import { createSim } from './sim.js';
 import { createScreenView } from './screen-view.js';
 import { createAlertFx } from './alert-fx.js';
+import { createProductView } from './product-view.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -526,9 +527,10 @@ function renderParams() {
 }
 
 // ── 畫面切換 ─────────────────────────────────
-const VIEWS = ['arm', 'sim', 'settings', 'screen', 'trace', 'compare'];
+const VIEWS = ['product', 'arm', 'sim', 'settings', 'screen', 'trace', 'compare'];
 let sim = null;
 let screenView = null;
+let productView = null;
 let viewNow = 'arm';
 function go(v, { push = true } = {}) {
   if (!VIEWS.includes(v)) v = 'arm';
@@ -544,6 +546,11 @@ function go(v, { push = true } = {}) {
     sim ||= createSim({ $, esc, speak, chime, unlockAudio, getSpec: () => currentSpec });
     requestAnimationFrame(sim.resize);
   } else sim?.pause();
+  if (v === 'product') {
+    pause();
+    productView ||= createProductView({ $, esc, speak, unlockAudio, getSpec: () => currentSpec });
+    requestAnimationFrame(productView.resize);
+  }
   if (v === 'screen') {
     pause();
     screenView ||= createScreenView({ $, esc, speak, chime, unlockAudio, getSpec: () => currentSpec });
@@ -610,6 +617,7 @@ $('#set-apply').addEventListener('click', () => {
   $('#set-status').textContent = '已套用，下一台車開始生效';
   renderParams();
   screenView?.refresh();
+  productView?.refresh();
   load(ui.scenarioId);
 });
 $('#set-reset').addEventListener('click', () => {
@@ -857,6 +865,7 @@ function step(dt) {
 
   if (viewNow === 'sim' && sim) sim.frame(dt, time);
   if (viewNow === 'screen' && screenView) screenView.frame(dt, time);
+  if (viewNow === 'product' && productView) productView.frame(dt, time);
 
   uiTimer += dt;
   if (ui.dirty || uiTimer > 0.2) {
