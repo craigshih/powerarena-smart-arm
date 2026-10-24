@@ -12,6 +12,7 @@ import { createSmartArm } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun } from './scenarios.js';
 import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
+import { createAlertFx } from './alert-fx.js';
 
 // 現行手臂上同一時刻會發生什麼（依訪綱理解，待業主確認）
 const LEGACY_TEXT = {
@@ -89,6 +90,7 @@ function makeWorld(legacy) {
 export function createSim(deps) {
   const { $, esc, speak, chime, unlockAudio, getSpec } = deps;
   const worlds = { old: makeWorld(true), iot: makeWorld(false) };
+  const fx = createAlertFx(worlds.iot.scene); // 只有 IoT 手臂有示警；現行手臂什麼都沒有
   const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 60);
   // 從師傅肩膀後方看：師傅的手、工具、手臂螢幕與螺絲都在畫面裡
   const SIDE_CAM = {
@@ -139,6 +141,7 @@ export function createSim(deps) {
     st.id = id;
     st.run = createRun(scenarioById(id), { encoder: true, spec: getSpec(), vin: 'TWPA2026C00000001', epoch: Date.now() });
     resetLegacy();
+    fx.reset();
     for (const w of Object.values(worlds)) {
       for (const side of ['L', 'R']) {
         w.arms[side].setToolRest({ instant: true });
@@ -165,6 +168,7 @@ export function createSim(deps) {
         else w.arms[m.side].setToolRest();
       }
     }
+    fx.onRecords(out.records, { pops: !silent });
     for (const r of out.records) {
       if (r.type === 'TIGHTEN_OK' || r.type === 'TIGHTEN_NG') st.counts.records++;
       if (['EARLY_ATTEMPT', 'SEQUENCE_ERROR', 'TIGHTEN_NG', 'TOOL_FAULT', 'AUTOMATION_FAULT'].includes(r.type)) st.counts.blocked++;
@@ -290,6 +294,10 @@ export function createSim(deps) {
         }
       }
       const v = views[key];
+      if (key === 'iot') {
+        fx.update(dt, time, { states: run.states, arms: w.arms, tray: w.env.tray });
+        if (v.host.dataset.fx !== fx.mood) v.host.dataset.fx = fx.mood;
+      }
       v.r.render(w.scene, camera);
       v.lr.render(w.scene, camera);
     }

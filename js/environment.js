@@ -113,6 +113,53 @@ export function buildEnvironment(root) {
   root.add(zones);
   out.zones = zones;
 
+  // 車體輸送滑軌：坑道地面兩條導軌、枕木、承載台車與行進方向箭頭（車頭朝 +Z 前進）
+  const conveyor = new THREE.Group();
+  const railMat = mat(0x8a929e, { metalness: 0.75, roughness: 0.3 });
+  const sleeperMat = mat(0x2a2f38, { roughness: 0.9 });
+  const carrierMat = mat(0x3d5a80, { metalness: 0.4, roughness: 0.5 });
+  const cz0 = -7;
+  const cz1 = 9;
+  for (const x of [-0.5, 0.5]) {
+    conveyor.add(span(x - 0.035, x + 0.035, 0.02, 0.05, cz0, cz1, railMat)); // 底板
+    conveyor.add(span(x - 0.008, x + 0.008, 0.05, 0.13, cz0, cz1, railMat)); // 腹板
+    conveyor.add(span(x - 0.03, x + 0.03, 0.13, 0.16, cz0, cz1, railMat)); // 軌頭
+  }
+  for (let z = cz0 + 0.2; z < cz1; z += 0.6) conveyor.add(span(-0.65, 0.65, 0, 0.02, z - 0.06, z + 0.06, sleeperMat));
+  // 承載台車：車輪壓在導軌上，立柱撐住車體底部（避開前方承盤）
+  const carrier = new THREE.Group();
+  carrier.add(span(-0.58, 0.58, 0.16, 0.28, -2.15, -0.25, carrierMat));
+  for (const z of [-2.0, -0.4]) {
+    for (const x of [-0.5, 0.5]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 18), M.steel);
+      w.rotation.z = Math.PI / 2;
+      w.position.set(x, 0.22, z);
+      w.castShadow = true;
+      carrier.add(w);
+    }
+    for (const x of [-0.42, 0.42]) carrier.add(box(0.09, 1.27, 0.09, carrierMat, x, 0.28 + 1.27 / 2, z));
+    carrier.add(span(-0.5, 0.5, 1.5, 1.55, z - 0.08, z + 0.08, carrierMat));
+  }
+  conveyor.add(carrier);
+  // 行進方向箭頭（地面黃色 V 字）
+  const chevron = new THREE.MeshBasicMaterial({ color: 0xf2c230, transparent: true, opacity: 0.55 });
+  for (let z = cz0 + 1; z < cz1; z += 1.6) {
+    for (const s of [1, -1]) {
+      const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.28), chevron);
+      bar.rotation.x = -Math.PI / 2;
+      bar.rotation.z = s * 0.75;
+      bar.position.set(s * 0.09, 0.012, z);
+      conveyor.add(bar);
+    }
+  }
+  info(conveyor, { title: '車體輸送滑軌', id: 'env-conveyor', rows: [
+    ['結構', '坑道地面兩條導軌，承載台車撐住車體底部，車頭朝前（+Z）進站'],
+    ['節拍', `車頭進站到車尾出站約 ${480} 秒（已確認）`],
+    ['原型', '車輛靜止顯示；若實際邊走邊鎖，關節編碼器需補償輸送線位置'],
+  ] });
+  root.add(conveyor);
+  out.conveyor = conveyor;
+
   return out;
 }
 

@@ -11,6 +11,7 @@ import { createSmartArm, drawArmScreen } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun } from './scenarios.js';
 import { buildEnvironment, addFactoryBackdrop } from './environment.js';
 import { createOperator } from './operator.js';
+import { createAlertFx } from './alert-fx.js';
 
 // 螢幕給師傅的作用：情境、時刻（秒）、側
 export const USES = [
@@ -51,6 +52,7 @@ export function createScreenView(deps) {
   const arms = { L: createSmartArm({ side: 'L', labels: false }), R: createSmartArm({ side: 'R', labels: false }) };
   const ops = { L: createOperator({ side: 'L' }), R: createOperator({ side: 'R' }) };
   scene.add(arms.L, arms.R, ops.L, ops.R);
+  const fx = createAlertFx(scene);
 
   const host = $('#pov-view');
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -90,6 +92,7 @@ export function createScreenView(deps) {
   const toolPoint = (t) => new THREE.Vector3(...boltPosition(t.zoneId, t.boltIndex)).add(new THREE.Vector3(0, 0.03, 0));
 
   function apply(out, silent) {
+    fx.onRecords(out.records, { pops: !silent });
     for (const m of out.moves) {
       if (m.target) arms[m.side].setToolTarget(toolPoint(m.target));
       else arms[m.side].setToolRest();
@@ -107,6 +110,7 @@ export function createScreenView(deps) {
   function load(id, { autoplay = false, at = 0 } = {}) {
     st.id = id;
     st.run = createRun(scenarioById(id), { encoder: true, spec: getSpec(), vin: 'TWPA2026D00000001', epoch: Date.now() });
+    fx.reset();
     for (const side of ['L', 'R']) { arms[side].setToolRest({ instant: true }); ops[side].say(''); }
     for (let x = 0; x < at; x += 0.25) apply(st.run.advance(Math.min(x + 0.25, at)), true);
     apply(st.run.advance(st.run.t), true);
@@ -163,6 +167,8 @@ export function createScreenView(deps) {
         react: a && a.level !== 'info' && run.t - a.at < 2.5 ? arms[side].getControllerPos() : null,
       });
     }
+    fx.update(dt, time, { states: run.states, arms, tray: env.tray });
+    if (host.dataset.fx !== fx.mood) host.dataset.fx = fx.mood;
     renderer.render(scene, camera);
     labels.render(scene, camera);
     drawDevice();

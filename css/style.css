@@ -532,6 +532,47 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .spec dd { margin: 0; }
 .spec small { display: block; color: var(--faint); font-size: 12px; }
 
+/* 3D 示警標籤（每種情境一個顏色與圖示） */
+.fx-label {
+  --c: #e0303a;
+  display: flex; align-items: center; gap: 6px; transform: translateY(-6px); white-space: nowrap; pointer-events: none;
+  padding: 5px 10px 5px 7px; border-radius: 9px; font-size: 12.5px; color: #fff;
+  background: color-mix(in srgb, var(--c) 82%, #0a0e14); border: 1px solid color-mix(in srgb, var(--c) 60%, #fff);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c) 55%, transparent), 0 6px 16px rgba(0, 0, 0, .45);
+}
+.fx-label svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.fx-label b { font-weight: 700; }
+.fx-label span { font-weight: 500; opacity: .9; padding-left: 6px; border-left: 1px solid rgba(255, 255, 255, .35); }
+.fx-operation { --c: #e0303a; }
+.fx-sequence { --c: #d63bb8; }
+.fx-warn { --c: #c98a12; }
+.fx-timeout { --c: #e8650f; }
+.fx-automation { --c: #8a5ad6; }
+.fx-tool { --c: #e07a2a; }
+.fx-ok { --c: #23a455; }
+.fx-pop { --c: #23a455; padding: 2px 7px 2px 4px; font-size: 11.5px; box-shadow: none; }
+.fx-pop svg { width: 14px; height: 14px; }
+
+/* 畫面邊框：依目前的示警類型變色 */
+.viewport::after, .sim-view::after, .pov-view::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit;
+  box-shadow: inset 0 0 0 0 transparent; transition: box-shadow .25s;
+}
+[data-fx="operation"]::after { --fx: 224, 48, 58; }
+[data-fx="sequence"]::after { --fx: 255, 79, 216; }
+[data-fx="warn"]::after { --fx: 240, 181, 69; }
+[data-fx="timeout"]::after { --fx: 255, 122, 26; }
+[data-fx="automation"]::after { --fx: 176, 124, 255; }
+[data-fx="tool"]::after { --fx: 255, 138, 61; }
+[data-fx="ok"]::after { --fx: 60, 207, 107; }
+[data-fx]:not([data-fx=""])::after {
+  box-shadow: inset 0 0 0 4px rgba(var(--fx), .9), inset 0 0 90px rgba(var(--fx), .35);
+  animation: fxPulse 1s ease-in-out infinite;
+}
+[data-fx="ok"]::after, [data-fx="warn"]::after { animation-duration: 1.8s; }
+@keyframes fxPulse { 50% { box-shadow: inset 0 0 0 2px rgba(var(--fx), .5), inset 0 0 40px rgba(var(--fx), .15); } }
+@media (prefers-reduced-motion: reduce) { [data-fx]::after { animation: none !important; } }
+
 /* ── 大螢幕：分段放寬 ─────────────── */
 @media (min-width: 1440px) { :root { --left-w: 288px; --right-w: 380px; } }
 @media (min-width: 1536px) { :root { --page-w: 1440px; } }
@@ -604,6 +645,9 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
   .screen-note { margin-left: 0; flex-basis: 100%; }
   .sim-grid { grid-template-columns: 1fr; }
   .uses { grid-template-columns: 1fr; }
+  .fx-label { font-size: 11px; padding: 3px 8px 3px 5px; }
+  .fx-label span { display: none; }
+  .fx-label svg { width: 15px; height: 15px; }
   .device-wrap { padding: 0 12px 14px; }
   .device-body { padding: 12px 12px 8px; border-radius: 14px; }
   .note { width: 22px; height: 22px; font-size: 12px; }

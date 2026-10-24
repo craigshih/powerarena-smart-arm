@@ -10,6 +10,7 @@ import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
 import { createSim } from './sim.js';
 import { createScreenView } from './screen-view.js';
+import { createAlertFx } from './alert-fx.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -76,6 +77,7 @@ for (const side of ['L', 'R']) {
   ops[side].traverse((o) => { if (o.isMesh) { o.userData.info = info; opMeshes.push(o); } });
 }
 const pickables = [...env.pickables, ...arms.L.pickables, ...arms.R.pickables, ...opMeshes];
+const fx = createAlertFx(scene); // 每種情境自己的顏色、圖示與標記
 
 // ── 視角 ─────────────────────────────────────
 const PRESETS = {
@@ -251,6 +253,7 @@ function load(id, { autoplay = false } = {}) {
 }
 
 function resetPanels() {
+  fx.reset();
   ui.log = [];
   ui.notes = { L: null, R: null, all: null };
   ui.voiceLine = { L: null, R: null };
@@ -290,9 +293,13 @@ function snapArm(side) {
 }
 const toolPoint = (t) => new THREE.Vector3(...boltPosition(t.zoneId, t.boltIndex)).add(new THREE.Vector3(0, 0.03, 0));
 
+// 出錯時鏡頭轉到哪裡：該側工具特寫，或能看到承盤的全景
+const FOLLOW = { EARLY_ATTEMPT: 'side', SEQUENCE_ERROR: 'side', TIGHTEN_NG: 'side', TOOL_FAULT: 'side', TIMEOUT: 'side', AUTOMATION_FAULT: 'orbit' };
+
 function consume(out, { silent = false } = {}) {
   const t = ui.run.t;
   if (out.records.length) live.get(ui.runId)?.push(...out.records);
+  fx.onRecords(out.records, { pops: !silent });
   for (const r of out.records) {
     if (['TOOL_ENABLED', 'TRAY_LOWERING'].includes(r.type) && ui.log.length > 60) continue;
     const meta = EVENT_TYPES[r.type];
@@ -304,6 +311,10 @@ function consume(out, { silent = false } = {}) {
   for (const a of out.alerts) {
     ui.voiceLine[a.side] = { text: a.say || a.text, level: a.level, t };
     if (!silent) ops[a.side].say(`「${a.say || a.text}」`, a.level === 'info' ? 'info' : 'voice', 3.2);
+    if (!silent && FOLLOW[a.type] && $('#opt-follow').checked && viewNow === 'arm') {
+      presetKey = FOLLOW[a.type] === 'side' ? `tool${a.side}` : FOLLOW[a.type];
+      goPreset(presetKey);
+    }
     if (!silent) {
       if (a.level !== 'info') chime(a.level);
       speak(a.say, LEVEL_RANK[a.level] >= 2);
@@ -825,6 +836,8 @@ function step(dt) {
     }
     // 承盤與螺絲狀態
     env.tray.position.y = -P.trayDrop.v * ui.run.trayPos;
+    fx.update(dt, time, { states: ui.run.states, arms, tray: env.tray });
+    if (viewport.dataset.fx !== fx.mood) viewport.dataset.fx = fx.mood;
     const pulse = 0.5 + 0.5 * Math.sin(time * 6);
     for (const side of ['L', 'R']) {
       const s = ui.run.states[side];
