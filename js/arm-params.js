@@ -49,6 +49,16 @@ export const P = {
   commTimeout: p(0.5, 's', '通訊中斷判定', SRC.ASM, 'assumed', '超過即視為斷線，工具預設鎖住'),
   encoderZoneTol: p(0.06, 'm', '編碼器區域判定容差', SRC.ASM, 'assumed', '只判斷到「哪個區域」，不到哪一顆'),
 
+  // ── 零件規格（手臂介紹頁的細部說明）────────
+  controllerPsets: p('3 組', '', '控制器鎖附程式（Pset）', SRC.ASM, 'assumed', '依車型與區域切換，含批次計數'),
+  toolTorqueRange: p('5–200', 'N·m', '工具扭力量測範圍', SRC.ASM, 'assumed'),
+  toolAngleRes: p(0.5, '°', '角度量測解析度', SRC.ASM, 'assumed'),
+  ringSignals: p('綠・藍・黃・紅＋震動', '', '握把 LED 環', SRC.ASM, 'assumed'),
+  speakerLevel: p(85, 'dB', '喇叭音量（1 m 處）', SRC.ASM, 'assumed', '高於廠房背景噪音'),
+  encoderRes: p(0.1, '°', '關節編碼器解析度', SRC.ASM, 'assumed'),
+  plcSignals: p(2, '點', '承盤數位訊號（24 V）', SRC.ASM, 'assumed', '開始下降、下降完成'),
+  keyModes: p('正常／降級', '', '班長鑰匙開關', SRC.ASM, 'assumed'),
+
   // ── 手臂螢幕 ──────────────────────────────
   screenSize: p(10.1, '吋', '手臂螢幕尺寸', SRC.ASM, 'assumed', '工業級觸控面板，只顯示不需操作'),
   screenBrightness: p(1000, 'nits', '螢幕亮度', SRC.ASM, 'assumed', '廠房頂燈下仍看得清楚'),
@@ -123,5 +133,6 @@ export const PARAM_GROUPS = [
   ['手臂幾何', ['columnDrop', 'link1', 'link2', 'tubeLength', 'toolLength', 'trolleyLead']],
   ['承盤與時序', ['trayDrop', 'trayDuration', 'trayFaultTimeout', 'phaseNominal', 'phaseLimit', 'phaseWarnLead', 'checkpointLead', 'alarmHold']],
   ['工具與感測', ['batteryLowPct', 'commTimeout', 'encoderZoneTol', 'station']],
+  ['零件規格', ['controllerPsets', 'toolTorqueRange', 'toolAngleRes', 'ringSignals', 'speakerLevel', 'encoderRes', 'plcSignals', 'keyModes']],
   ['手臂螢幕', ['screenSize', 'screenBrightness', 'screenRating', 'screenDistance', 'screenMount']],
 ];

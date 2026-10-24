@@ -320,6 +320,14 @@ export function createAlertFx(scene) {
     update,
     reset,
     get mood() { return mood; },
-    setVisible(v) { root.visible = v; },
+    setVisible(v) {
+      root.visible = v;
+      if (!v) { // CSS2D 標籤不會跟著父物件隱藏，要個別關掉
+        hideSet(sets.L);
+        hideSet(sets.R);
+        trayLabel.obj.visible = false;
+        reset();
+      }
+    },
   };
 }

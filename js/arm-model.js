@@ -25,6 +25,7 @@ export const PRINCIPLES = {
 export const ARM_PARTS = [
   {
     key: 'enable', n: 1, title: '工具內建致能／鎖定', tag: '致能鎖定', principles: [1, 2],
+    spec: ['controllerPsets', 'toolTorqueRange'],
     before: '工具隨時都能轉，靠師傅自己記得等承盤。',
     what: '控制器讀承盤 PLC 的「下降完成」訊號。A 階段只開放第一階段的螺絲數，鎖滿就自動鎖住工具；承盤降到底才開放 C。',
     why: '師傅照原本的肌肉記憶作業，不用多按按鈕；能不能鎖由工具決定，而不是靠人記得。',
@@ -32,6 +33,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'torque', n: 2, title: '扭力／角度感測', tag: '扭力角度', principles: [2],
+    spec: ['toolTorqueRange', 'toolAngleRes'],
     before: '不回報扭力與角度，鎖得好不好沒人知道。',
     what: '工具內建扭力感測器與角度編碼器，每顆螺絲回報扭力與角度，控制器當場判 OK／NG。NG 不計數，要原地重鎖。',
     why: '「有沒有鎖緊」由工具量測，不用另外抽檢；每顆都留下履歷。',
@@ -39,6 +41,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'ring', n: 3, title: '握把 LED 環＋震動', tag: 'LED 環', principles: [1],
+    spec: ['ringSignals'],
     before: '握把上沒有任何燈號或震動。',
     what: '綠＝可鎖附、藍＝鎖附中、黃＝已鎖定或位置不對、紅閃＝錯誤；錯誤時握把震動。',
     why: '提示出現在師傅手上、本來就在看的位置，不用多看一個地方。這是電動鎖附工具的內建功能，不是加裝在工具上的外掛裝置。',
@@ -46,6 +49,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'controller', n: 4, title: '控制器三色燈＋喇叭', tag: '燈號喇叭', principles: [1, 3],
+    spec: ['speakerLevel'],
     before: '沒有語音、沒有工位燈號。',
     what: '控制器固定在軌道吊架上，不在工具上，不會晃。喇叭播「提前鎖附！提前鎖附！」等語音，三色燈同步工位狀態。',
     why: '師傅等待時不一定看前方，所以以聲音為主、燈號為輔；要看細節時再看手臂螢幕。',
@@ -53,6 +57,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'encoder', n: 5, title: '關節編碼器（選配，評估中）', tag: '編碼器', principles: [1, 2, 3],
+    spec: ['encoderRes', 'encoderZoneTol'],
     before: '不知道工具停在哪個區域。',
     what: '台車、兩個旋轉關節與平衡器升降都裝編碼器，控制器算出工具停在哪個區域。順序錯了直接鎖住工具，不必靠攝影機。',
     why: '師傅不用多做任何動作；裝在手臂結構上，不在工具上。風險在妥善率：需要校正，車輛若隨輸送線移動還要補償位置。',
@@ -60,6 +65,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'plc', n: 6, title: '承盤 PLC 訊號（I/O）', tag: 'PLC 訊號', principles: [2, 3],
+    spec: ['plcSignals', 'trayFaultTimeout'],
     before: '工具和承盤沒有連線，各做各的。',
     what: '控制器接承盤的「開始下降」「下降完成」數位訊號。承盤開始下降 8 秒內沒收到「下降完成」，判自動化錯誤。',
     why: '直接用設備本身的訊號判斷時機，不靠師傅或攝影機推測。',
@@ -67,6 +73,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'key', n: 7, title: '班長鑰匙開關（降級模式）', tag: '鑰匙開關', principles: [3],
+    spec: ['keyModes'],
     before: '故障時只能停線或照做，沒有任何紀錄。',
     what: '故障時由班長轉鑰匙切換，承盤連鎖暫停、回到現行作業方式，全程記錄 BYPASS 事件。',
     why: '妥善率：系統故障不會變成停線的理由，也清楚由誰負責切換。',
@@ -74,6 +81,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'screen', n: 8, title: '手臂螢幕', tag: '手臂螢幕', principles: [1, 3],
+    spec: ['screenSize', 'screenBrightness', 'screenRating', 'screenDistance'],
     before: '沒有螢幕，靠記憶與班長口頭提醒。',
     what: '小螢幕裝在平衡器外管下端，跟著工具移動、面向師傅：大字顯示目前步驟、這一側每顆螺絲的狀態，錯誤時整面變色並寫出怎麼修正。',
     why: '師傅低頭看工具時螢幕就在同一個視線裡，不用另外看站旁；錯了當場看得到是哪一顆、要怎麼處置。',
@@ -547,6 +555,28 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     }
   }
 
+  // 每個部件的放大位置：target 是部件中心，offset 是攝影機相對部件的方向與距離（世界座標）
+  const FOCUS = {
+    enable: [tool, [0, 0.27, 0], [0.62, 0.22, 0.52]],
+    torque: [tool, [0, 0.165, 0], [0.5, 0.16, 0.4]],
+    ring: [tool, [0, 0.198, 0], [0.48, 0.18, 0.38]],
+    screen: [display, [0, 0, 0], [0.62, 0.22, 0.2]],
+    encoder: [j2, [0, 0, 0], [0.36, 0.32, 0.5]],
+    controller: [ctrl, [0, cabY + 0.14, 0], [0.42, 0.22, -1.2]],
+    key: [ctrl, [0.08, cabY - 0.08, -0.078], [0.2, 0.06, -0.6]],
+    plc: [ctrl, [-s * 0.165, cabY - 0.05, 0], [-0.62, 0.1, -0.46]],
+    trolley: [trolley, [0, -0.06, 0], [0.55, 0.22, 0.8]],
+    arm: [j1, [L1 / 2, 0, 0], [0.7, 0.55, 0.95]],
+    balancer: [wrist, [0, -0.32, 0], [0.62, 0.12, 0.62]],
+  };
+  function getPartFocus(key) {
+    const f = FOCUS[key];
+    if (!f) return null;
+    const target = f[0].localToWorld(new THREE.Vector3(...f[1]));
+    const offset = new THREE.Vector3(f[2][0] * s, f[2][1], f[2][2]);
+    return { target, offset };
+  }
+
   // 握把、工具頂端、控制器燈號的世界座標（給師傅模型伸手與轉頭用）
   const getGrip = (t = new THREE.Vector3()) => tool.localToWorld(t.set(s * 0.15, 0.25, 0));
   const getToolTop = (t = new THREE.Vector3()) => tool.localToWorld(t.set(0, 0.33, 0));
@@ -566,7 +596,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   solve();
   return Object.assign(root, {
     side, legacy, pickables, tags,
-    setState, setToolTarget, setToolRest, getToolTip, getGrip, getToolTop, getControllerPos, update,
+    setState, setToolTarget, setToolRest, getToolTip, getGrip, getToolTop, getControllerPos, getPartFocus, update,
     setEncoderEnabled, setLabelsVisible, highlight,
   });
 }

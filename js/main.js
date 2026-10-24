@@ -9,7 +9,6 @@ import { SCENARIOS, scenarioById, createRun, generateHistory } from './scenarios
 import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
 import { createSim } from './sim.js';
-import { createScreenView } from './screen-view.js';
 import { createAlertFx } from './alert-fx.js';
 import { createProductView } from './product-view.js';
 
@@ -527,12 +526,12 @@ function renderParams() {
 }
 
 // ── 畫面切換 ─────────────────────────────────
-const VIEWS = ['product', 'arm', 'sim', 'settings', 'screen', 'trace', 'compare'];
+const VIEWS = ['product', 'arm', 'sim', 'settings', 'trace', 'compare'];
 let sim = null;
-let screenView = null;
 let productView = null;
 let viewNow = 'product';
 function go(v, { push = true } = {}) {
+  const toScreen = v === 'screen'; // 舊的「手臂螢幕」頁已併入手臂介紹
   if (!VIEWS.includes(v)) v = 'product';
   viewNow = v;
   document.body.dataset.view = v;
@@ -551,14 +550,10 @@ function go(v, { push = true } = {}) {
     productView ||= createProductView({ $, esc, speak, unlockAudio, getSpec: () => currentSpec });
     requestAnimationFrame(productView.resize);
   }
-  if (v === 'screen') {
-    pause();
-    screenView ||= createScreenView({ $, esc, speak, chime, unlockAudio, getSpec: () => currentSpec });
-    requestAnimationFrame(screenView.resize);
-  } else screenView?.pause();
   if (v === 'trace') renderTrace();
   if (v === 'settings') renderSettings();
   if (v !== 'arm') window.scrollTo(0, 0);
+  if (toScreen) requestAnimationFrame(() => $('#pd-screen')?.scrollIntoView({ block: 'start' }));
 }
 $$('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
 window.addEventListener('hashchange', () => go(location.hash.slice(1), { push: false }));
@@ -616,7 +611,6 @@ $('#set-apply').addEventListener('click', () => {
   store.set('spec', draft);
   $('#set-status').textContent = '已套用，下一台車開始生效';
   renderParams();
-  screenView?.refresh();
   productView?.refresh();
   load(ui.scenarioId);
 });
@@ -864,7 +858,6 @@ function step(dt) {
   }
 
   if (viewNow === 'sim' && sim) sim.frame(dt, time);
-  if (viewNow === 'screen' && screenView) screenView.frame(dt, time);
   if (viewNow === 'product' && productView) productView.frame(dt, time);
 
   uiTimer += dt;
