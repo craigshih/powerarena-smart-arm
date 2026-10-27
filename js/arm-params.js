@@ -50,7 +50,7 @@ export const P = {
   encoderZoneTol: p(0.06, 'm', '編碼器區域判定容差', SRC.ASM, 'assumed', '只判斷到「哪個區域」，不到哪一顆'),
 
   // ── 零件規格（手臂介紹頁的細部說明）────────
-  controllerPsets: p('3 組', '', '控制器鎖附程式（Pset）', SRC.ASM, 'assumed', '依車型與區域切換，含批次計數'),
+  controllerPsets: p('2 組', '', '控制器鎖附程式（Pset）', SRC.ASM, 'assumed', '依車型與區域切換，含批次計數'),
   toolTorqueRange: p('5–200', 'N·m', '工具扭力量測範圍', SRC.ASM, 'assumed'),
   toolAngleRes: p(0.5, '°', '角度量測解析度', SRC.ASM, 'assumed'),
   ringSignals: p('綠・藍・黃・紅＋震動', '', '握把 LED 環', SRC.ASM, 'assumed'),
@@ -70,24 +70,24 @@ export const P = {
   station: p('ENG-07', '', '工位代號', SRC.ASM, 'assumed'),
 };
 
-// 鎖附區域：id、階段、位置沿用場域模型的 ZONES（pos.y 以高台面為 0）。
-// 螺絲數量、位置皆為假設。
+// 鎖附孔位：id、步驟、位置與場域模型的 ZONES 相同（js/twin/params.js，團隊現場紀錄）。
+//   步驟 1 左下、右下 → 步驟 2 承盤下降 → 步驟 3 左上、右上；左右以車輛本身為準。
+// 孔位座標為示意；pos.y 以高台面為 0。phase：A＝步驟 1，C＝步驟 3。
 export const ZONES = [
-  { id: 'Z1L', phase: 'A', side: 'L', label: '左引擎腳', pos: [0.56, 0.62, 1.78], size: [0.26, 0.22, 0.26], bolts: 3 },
-  { id: 'Z1R', phase: 'A', side: 'R', label: '右引擎腳', pos: [-0.56, 0.62, 1.78], size: [0.26, 0.22, 0.26], bolts: 3 },
-  { id: 'Z1T', phase: 'A', side: 'L', label: '變速箱固定點', pos: [0.5, 0.48, 1.34], size: [0.24, 0.2, 0.24], bolts: 2 },
-  { id: 'Z2L', phase: 'C', side: 'L', label: '車身固定點（左）', pos: [0.72, 0.3, 1.5], size: [0.2, 0.18, 0.5], bolts: 2 },
-  { id: 'Z2R', phase: 'C', side: 'R', label: '車身固定點（右）', pos: [-0.72, 0.3, 1.5], size: [0.2, 0.18, 0.5], bolts: 2 },
+  { id: 'Z1L', step: 1, phase: 'A', side: 'L', label: '左下螺絲', pos: [0.74, 0.55, 1.74], size: [0.2, 0.18, 0.2], bolts: 1 },
+  { id: 'Z1R', step: 1, phase: 'A', side: 'R', label: '右下螺絲', pos: [-0.74, 0.55, 1.74], size: [0.2, 0.18, 0.2], bolts: 1 },
+  { id: 'Z2L', step: 3, phase: 'C', side: 'L', label: '左上螺絲', pos: [0.74, 0.86, 1.74], size: [0.2, 0.18, 0.2], bolts: 1 },
+  { id: 'Z2R', step: 3, phase: 'C', side: 'R', label: '右上螺絲', pos: [-0.74, 0.86, 1.74], size: [0.2, 0.18, 0.2], bolts: 1 },
 ];
 
-// SOP 順序：每側依序鎖附的區域（假設）。B 為承盤下降，兩側共用。
+// 每側的鎖附順序：先下方、承盤下降後再上方（場域模型已確認）
 export const SEQUENCE = {
-  L: ['Z1L', 'Z1T', 'Z2L'],
+  L: ['Z1L', 'Z2L'],
   R: ['Z1R', 'Z2R'],
 };
-export const SEQUENCE_STATUS = p('L：Z1L → Z1T → B → Z2L；R：Z1R → B → Z2R', '', 'SOP 鎖附順序', SRC.ASM, 'assumed');
+export const SEQUENCE_STATUS = p('左下／右下 → 承盤下降 → 左上／右上', '', '鎖附順序', '場域模型（團隊現場紀錄）', 'confirmed');
 
-// 每個區域的鎖附規格（扭力、容差、角度窗）。師傅設定頁只改這裡的值。
+// 每個孔位的鎖附規格（扭力、容差、角度窗）。師傅設定頁只改這裡的值。
 const spec = (zone, torque, tol, angleMin, angleMax, pset) => ({
   torque: p(torque, 'N·m', `${zone} 目標扭力`, SRC.ASM, 'assumed'),
   tol: p(tol, '%', `${zone} 扭力容差 ±`, SRC.ASM, 'assumed'),
@@ -97,11 +97,10 @@ const spec = (zone, torque, tol, angleMin, angleMax, pset) => ({
 });
 
 export const SPEC = {
-  Z1L: spec('左引擎腳', 65, 10, 30, 120, 1),
-  Z1R: spec('右引擎腳', 65, 10, 30, 120, 1),
-  Z1T: spec('變速箱固定點', 50, 10, 30, 120, 2),
-  Z2L: spec('車身固定點（左）', 90, 10, 30, 120, 3),
-  Z2R: spec('車身固定點（右）', 90, 10, 30, 120, 3),
+  Z1L: spec('左下螺絲', 65, 10, 30, 120, 1),
+  Z1R: spec('右下螺絲', 65, 10, 30, 120, 1),
+  Z2L: spec('左上螺絲', 90, 10, 30, 120, 2),
+  Z2R: spec('右上螺絲', 90, 10, 30, 120, 2),
 };
 
 export const zoneById = (id) => ZONES.find((z) => z.id === id);

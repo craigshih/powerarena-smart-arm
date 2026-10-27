@@ -2,15 +2,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-import { P, SRC, ZONES, SEQUENCE, SEQUENCE_STATUS, SPEC, PARAM_GROUPS, zoneById, boltPosition } from './arm-params.js';
-import { EVENT_TYPES, CATEGORY, RESULT_LABEL, signalsFor, describe } from './arm-logic.js';
-import { createSmartArm, ARM_PARTS, PRINCIPLES } from './arm-model.js';
+import { P, SRC, ZONES, SEQUENCE_STATUS, SPEC, PARAM_GROUPS, zoneById, boltPosition } from './arm-params.js';
+import { EVENT_TYPES, CATEGORY, RESULT_LABEL, signalsFor } from './arm-logic.js';
+import { createSmartArm, drawArmScreen, PRINCIPLES } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun, generateHistory } from './scenarios.js';
 import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
 import { createSim } from './sim.js';
 import { createAlertFx } from './alert-fx.js';
 import { createProductView } from './product-view.js';
+import { createStationView } from './station-view.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -20,10 +21,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(`smart-arm:${k}`, JSON.stringify(v)); } catch { /* 私密模式等情況忽略 */ } },
 };
 const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦'];
 const SIDE_NAME = { L: '左側 L', R: '右側 R' };
-const TONE_HEX = { orange: '#ff8a3d', yellow: '#f0b545', teal: '#3dd6d0', green: '#3ccf6b', muted: '#5d6a80' };
-const RING_HEX = { green: '#3ccf6b', yellow: '#f0b545', red: '#e0303a', blue: '#4ea8ff', off: '#2a303a' };
 const LEVEL_RANK = { info: 0, warn: 1, alarm: 2, fault: 3 };
 const pchips = (list) => `<span class="pchips">${list.map((n) => `<span class="pchip p${n}">原則${'一二三'[n - 1]}・${PRINCIPLES[n].short}</span>`).join('')}</span>`;
 
@@ -129,8 +127,7 @@ function selectInfo(info) {
   const rows = info.rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
   $('#info').innerHTML = `
     <div class="info-head"><h3>${esc(info.title)}</h3><code>${esc(info.id)}</code>${info.principles?.length ? pchips(info.principles) : ''}</div>
-    <dl class="info-rows">${rows}</dl>
-    ${info.key === 'encoder' ? `<h4>評估</h4>${encoderEvalHtml()}` : ''}`;
+    <dl class="info-rows">${rows}</dl>`;
   setTab('info');
 }
 
@@ -369,7 +366,7 @@ $('#opt-encoder').addEventListener('change', (e) => {
   load(ui.scenarioId, { autoplay: ui.playing });
 });
 $('#opt-labels').addEventListener('change', (e) => arms.L.setLabelsVisible(e.target.checked));
-$('#opt-zones').addEventListener('change', (e) => (env.zones.visible = e.target.checked));
+$('#opt-zones').addEventListener('change', (e) => env.setLayer('zones', e.target.checked));
 
 function renderMarks() {
   const d = ui.run.duration;
@@ -391,47 +388,41 @@ function renderTimeline() {
   $('#t-time').textContent = `${fmtT(t)} / ${fmtT(duration)}`;
 }
 
-// ── 手臂螢幕（迷你與全頁共用）────────────────────
-function screenHtml() {
-  const run = ui.run;
-  const st = run.states;
-  let top = null;
+// ── 右側：即時狀態（每側一塊：手臂螢幕畫面＋聲音＋師傅處置）──
+const sideBlocks = {};
+function buildSideCards() {
+  $('#side-cards').innerHTML = ['L', 'R'].map((side) => `
+    <div class="sc" data-side="${side}">
+      <div class="sc-head"><b>${SIDE_NAME[side]}</b><span class="pill"></span></div>
+      <canvas class="sc-screen" width="480" height="320" aria-label="${SIDE_NAME[side]}手臂螢幕"></canvas>
+      <p class="sc-voice"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7"/></svg><span>—</span></p>
+      <p class="sc-note" hidden></p>
+    </div>`).join('') + '<p class="sc-boss" hidden></p>';
   for (const side of ['L', 'R']) {
-    const a = st[side].alarm;
-    if (a && (!top || LEVEL_RANK[a.level] > LEVEL_RANK[top.a.level] || (LEVEL_RANK[a.level] === LEVEL_RANK[top.a.level] && a.at > top.a.at))) top = { a, side };
+    const el = $(`.sc[data-side="${side}"]`);
+    sideBlocks[side] = { el, pill: $('.pill', el), ctx: $('.sc-screen', el).getContext('2d'), voice: $('.sc-voice', el), note: $('.sc-note', el), key: '' };
   }
-  const same = top && st.L.alarm?.type === st.R.alarm?.type && st.L.alarm?.text === st.R.alarm?.text;
-  const banner = top
-    ? `<div class="scr-alarm" data-level="${top.a.level}"><span>${esc(top.a.text)}</span><span class="who">${same ? '全站' : SIDE_NAME[top.side]}</span></div>`
-    : `<div class="scr-alarm" data-level="none"><span>依 SOP 作業中</span></div>`;
-  const sideHtml = (side) => {
-    const s = st[side];
-    const d = describe(s);
+}
+const RING_TONE = { green: 't-green', blue: 't-blue', yellow: 't-yellow', red: 't-red', off: 't-off' };
+function renderSideCards() {
+  for (const side of ['L', 'R']) {
+    const b = sideBlocks[side];
+    const s = ui.run.states[side];
     const sig = signalsFor(s);
-    const exp = s.expected;
-    const zones = SEQUENCE[side].map((id) => {
-      const z = zoneById(id);
-      const dots = s.bolts[id].map((b, i) => `<i class="${b}${exp && exp.zoneId === id && exp.boltIndex === i && (s.phase === 'A' || s.phase === 'C') ? ' cur' : ''}"></i>`).join('');
-      return `<div class="scr-zone${exp?.zoneId === id ? ' cur' : ''}"><span>${z.phase} · ${z.label}</span><span class="bolts">${dots}</span></div>`;
-    }).join('');
-    let time = '';
-    if (s.remaining != null) {
-      const n = Math.ceil(s.remaining);
-      const cls = s.timedOut ? 'over' : n <= P.phaseWarnLead.v ? 'hot' : '';
-      time = `<span class="scr-time ${cls}">${s.timedOut ? '已超時' : `剩 ${n} 秒`}</span>`;
-    }
-    const ringTone = { green: 't-green', blue: 't-blue', yellow: 't-yellow', red: 't-red', off: 't-off' }[sig.ring];
-    return `<div class="scr-side">
-      <div class="scr-head"><span class="scr-step" style="--c:${TONE_HEX[d.tone]}">${d.step}</span>
-        <div class="scr-title"><b>${d.title}</b><span>${SIDE_NAME[side]} · ${d.sub}</span></div></div>
-      <div class="scr-meta"><span class="pill ${ringTone}">工具${sig.label}</span>${time}</div>
-      <div class="scr-zones">${zones}</div>
-    </div>`;
-  };
-  const trayText = describe(st.L).tray;
-  return `${banner}<div class="scr-sides">${sideHtml('L')}${sideHtml('R')}</div>
-    <div class="scr-foot"><span class="tray-bar">承盤 <s><i style="width:${Math.round(run.trayPos * 100)}%"></i></s> ${trayText}</span>
-      <span>VIN ${st.L.vin}</span><span>${P.station.v} · ${fmtT(run.t)}</span></div>`;
+    b.pill.className = `pill ${RING_TONE[sig.ring]}`;
+    b.pill.textContent = sig.label;
+    const key = JSON.stringify([s.phase, s.tray, s.tool, s.lockReason, s.alarm?.type, s.alarm?.text, s.bolts, s.expected, s.remaining == null ? null : Math.ceil(s.remaining)]);
+    if (key !== b.key) { b.key = key; drawArmScreen(b.ctx, s, side); }
+    const v = ui.voiceLine[side];
+    b.voice.classList.toggle('hot', !!v && v.level !== 'info');
+    b.voice.lastChild.textContent = v ? `「${v.text}」` : '—';
+    const n = ui.notes[side];
+    b.note.hidden = !n;
+    if (n) b.note.textContent = n.text;
+  }
+  const boss = $('.sc-boss');
+  boss.hidden = !ui.notes.all;
+  if (ui.notes.all) boss.textContent = `班長：${ui.notes.all.text}`;
 }
 const lastHtml = new WeakMap();
 function paint(el, html) {
@@ -439,34 +430,9 @@ function paint(el, html) {
   lastHtml.set(el, html);
   el.innerHTML = html;
 }
-
-// ── 右側：即時狀態 ───────────────────────────
-function sideCardsHtml() {
-  const card = (side) => {
-    const s = ui.run.states[side];
-    const sig = signalsFor(s);
-    const lamp = (c, hex) => `<i class="lamp ${sig.stack[c]}" style="--c:${hex}"></i>`;
-    const v = ui.voiceLine[side];
-    const n = ui.notes[side];
-    const last = s.last ? `${zoneById(s.last.zoneId).label} #${s.last.boltIndex + 1} · ${s.last.torqueNm} N·m · ${s.last.angleDeg}° · <b class="res res-${s.last.result}">${s.last.result}</b>` : '—';
-    const ringTone = { green: 't-green', blue: 't-blue', yellow: 't-yellow', red: 't-red', off: 't-off' }[sig.ring];
-    return `<div class="sc">
-      <div class="sc-head"><b>${SIDE_NAME[side]} · 師傅 ${esc(s.operator)}</b><span class="pill ${ringTone}">${sig.label}</span></div>
-      <div class="lights">握把 LED <span class="ring-dot${sig.ringBlink ? ' blink' : ''}" style="--c:${RING_HEX[sig.ring]}"></span>
-        控制器 <span class="lamp-stack">${lamp('red', '#e0303a')}${lamp('yellow', '#f0b545')}${lamp('green', '#3ccf6b')}</span>
-        ${sig.haptic ? '<span class="vib">握把震動</span>' : ''}</div>
-      <dl class="sc-line">
-        <dt>聲音</dt><dd class="${v && v.level !== 'info' ? 'sc-voice' : ''}">${v ? `「${esc(v.text)}」` : '—'}</dd>
-        <dt>師傅處置</dt><dd>${n ? esc(n.text) : '—'}</dd>
-        <dt>最後一顆</dt><dd>${last}</dd>
-      </dl></div>`;
-  };
-  const boss = ui.notes.all ? `<div class="sc"><div class="sc-head"><b>班長／全站</b></div><dl class="sc-line"><dt>處置</dt><dd>${esc(ui.notes.all.text)}</dd></dl></div>` : '';
-  return card('L') + card('R') + boss;
-}
 function logHtml() {
   if (!ui.log.length) return '<li class="lv-info"><span>按下播放開始</span></li>';
-  return ui.log.slice(0, 40).map((l) => `<li class="lv-${l.lv}"><time>${fmtT(l.sim)}</time><span>${l.text}</span></li>`).join('');
+  return ui.log.slice(0, 8).map((l) => `<li class="lv-${l.lv}"><time>${fmtT(l.sim)}</time><span>${l.text}</span></li>`).join('');
 }
 
 let tabNow = 'live';
@@ -478,39 +444,7 @@ function setTab(key) {
 $$('.tabs [data-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
 setTab('live');
 
-// ── 改良點、評估、參數 ──────────────────────────
-function encoderEvalHtml() {
-  const rows = [
-    ['ok', '原則一：不增加動作', '編碼器是被動感測，師傅不用多按、不用多看。'],
-    ['ok', '原則二：從工具思考', '防錯由手臂與控制器本身完成，不靠攝影機判斷時機。'],
-    ['warn', '與「在鎖附機器上加裝裝置」的差異', '被否決的理由是容易晃、隱形成本高。編碼器裝在手臂關節的固定結構上，不在工具上；市面上也有內建編碼器的定位手臂可以整組採購，不是事後加裝。需要向業主說明這個差異。'],
-    ['warn', '原則三：妥善率（風險最高）', '① 車輛若邊作業邊隨輸送線移動，需要補償輸送線位置。② 同一區域螺絲間距約 0.1 m，判到「哪一顆」精度要求高。③ 需要定期校正（例如每班開工回原點）。'],
-    ['ok', '故障對策', '編碼器異常時只關閉順序檢查，承盤連鎖照常運作，不讓產線停下來。'],
-  ];
-  return `<div class="eval">
-    <div class="verdict"><b>結論：不違反原則一、二；原則三有風險但可控。</b>
-      <p>建議定位只做到「哪個區域」，不做到「哪一顆」；列為第二期選配，先用承盤連鎖＋計數上線。上方紅外線測距可當替代定位方式。</p></div>
-    ${rows.map(([k, t, d]) => `<div class="eval-row"><span class="mk ${k}">${k === 'ok' ? '✓' : '!'}</span><div><b>${t}</b><p>${d}</p></div></div>`).join('')}
-  </div>`;
-}
-
-function renderParts() {
-  $('#parts').innerHTML = `
-    <h4>改良點（點一下在 3D 標出）</h4>
-    <ul class="parts-list">${ARM_PARTS.map((p) => `
-      <li><button type="button" data-part="${p.key}">
-        <span class="n">${NUM[p.n]}</span><b>${p.title}</b>${pchips(p.principles)}<span class="what">${p.what}</span>
-      </button></li>`).join('')}</ul>
-    <h4>關節編碼器手臂評估</h4>${encoderEvalHtml()}`;
-  $('#parts').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-part]');
-    if (!b) return;
-    const m = arms.L.pickables.find((o) => o.userData.info.key === b.dataset.part);
-    if (m) selectInfo(m.userData.info);
-  });
-  $('#encoder-eval').innerHTML = encoderEvalHtml();
-}
-
+// ── 參數 ─────────────────────────────────────
 function renderParams() {
   const chip = (st) => `<span class="chip chip-${st}">${{ confirmed: '已確認', derived: '推算', assumed: '假設' }[st]}</span>`;
   const row = (it) => `<tr><th>${esc(it.label)}${it.note ? `<small>${esc(it.note)}</small>` : ''}<small>${esc(it.src)}</small></th>
@@ -526,7 +460,9 @@ function renderParams() {
 }
 
 // ── 畫面切換 ─────────────────────────────────
-const VIEWS = ['product', 'arm', 'sim', 'settings', 'trace', 'compare'];
+const VIEWS = ['station', 'product', 'arm', 'settings', 'sim', 'compare', 'trace'];
+const GROUP_OF = { station: 'station', product: 'arm', arm: 'arm', settings: 'arm', sim: 'vs', compare: 'vs', trace: 'trace' };
+let stationView = null;
 let sim = null;
 let productView = null;
 let viewNow = 'product';
@@ -536,10 +472,16 @@ function go(v, { push = true } = {}) {
   viewNow = v;
   document.body.dataset.view = v;
   $$('main > .view').forEach((s) => (s.hidden = s.dataset.view !== v));
-  $$('[data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === v));
+  $$('.ng').forEach((g) => g.classList.toggle('on', g.dataset.group === GROUP_OF[v]));
+  $$('.ng-sub [data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === v));
   if (push && location.hash !== `#${v}`) history.replaceState(null, '', `#${v}`);
-  $(`[data-go="${v}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  $(`.ng[data-group="${GROUP_OF[v]}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   if (v === 'arm') requestAnimationFrame(resize);
+  if (v === 'station') {
+    pause();
+    stationView ||= createStationView({ $ });
+    requestAnimationFrame(stationView.resize);
+  }
   if (v === 'sim') {
     pause();
     sim ||= createSim({ $, esc, speak, chime, unlockAudio, getSpec: () => currentSpec });
@@ -552,7 +494,7 @@ function go(v, { push = true } = {}) {
   }
   if (v === 'trace') renderTrace();
   if (v === 'settings') renderSettings();
-  if (v !== 'arm') window.scrollTo(0, 0);
+  if (v !== 'arm' && v !== 'station') window.scrollTo(0, 0);
   if (toScreen) requestAnimationFrame(() => $('#pd-screen')?.scrollIntoView({ block: 'start' }));
 }
 $$('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
@@ -786,6 +728,66 @@ $('#f-csv').addEventListener('click', () => {
   download(`smart-arm-${trace.mode}.csv`, `﻿${cols.join(',')}\n${rows.map((r) => cols.map((c) => cell(r[c])).join(',')).join('\n')}`, 'text/csv');
 });
 
+// 匯出 PDF：用 html2pdf（html2canvas＋jsPDF）把淺色報表轉成 A4 橫式 PDF；中文以圖像方式輸出，不需要另外嵌字型
+let pdfLib = null;
+function loadPdfLib() {
+  pdfLib ||= new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    sc.onload = () => resolve(window.html2pdf);
+    sc.onerror = () => { pdfLib = null; reject(new Error('PDF 元件載入失敗')); };
+    document.head.appendChild(sc);
+  });
+  return pdfLib;
+}
+const PDF_LIMIT = 400;
+$('#f-pdf').addEventListener('click', async () => {
+  const btn = $('#f-pdf');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '產生中…';
+  try {
+    const html2pdf = await loadPdfLib();
+    const { rows, liveVins, f } = traceData();
+    const bolt = trace.mode === 'bolt';
+    const used = rows.slice(0, PDF_LIMIT);
+    const filters = [f.vin && `VIN 含 ${f.vin}`, f.side && `${f.side} 側`, f.zone && zoneById(f.zone).label, f.result && RESULT_LABEL[f.result],
+      f.cat && (f.cat === 'ANY' ? '只看有錯誤' : CATEGORY[f.cat])].filter(Boolean).join('、') || '全部';
+    const cat = (c) => `<span style="display:inline-block;padding:0 6px;border-radius:8px;border:1px solid #999;font-size:9px;margin-right:2px">${CATEGORY[c]}</span>`;
+    const head = bolt
+      ? ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '扭力 N·m', '角度 °', '結果', '錯誤分類', '說明']
+      : ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '階段', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
+    const body = used.map((r) => {
+      const cells = bolt
+        ? [fmtTs(r.ts), r.vin + (liveVins.has(r.vin) ? '＊' : ''), r.station, r.side, r.operator, where(r), r.torqueNm, r.angleDeg, RESULT_LABEL[r.result], [...r.cats].map(cat).join('') || '—', esc(r.notes.join('；')) || '—']
+        : [fmtTs(r.ts), r.vin + (liveVins.has(r.vin) ? '＊' : ''), r.station, r.side, r.operator, where(r), r.phase || '—', EVENT_TYPES[r.type].label, r.torqueNm ?? '—', r.angleDeg ?? '—', RESULT_LABEL[r.result], r.errorCategory ? cat(r.errorCategory) : '—'];
+      const bad = ['NG', 'FAULT', 'BLOCKED'].includes(r.result);
+      return `<tr style="page-break-inside:avoid${bad ? ';background:#fff1f1' : ''}">${cells.map((c) => `<td style="padding:4px 6px;border-bottom:1px solid #ddd">${c}</td>`).join('')}</tr>`;
+    }).join('');
+    const now = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
+    const report = `<div style="font-family:-apple-system,'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;color:#111;padding:4px">
+      <h1 style="font-size:18px;margin:0 0 4px">事後追溯報表｜${bolt ? '螺絲履歷' : '全部事件'}</h1>
+      <p style="font-size:11px;color:#555;margin:0 0 10px">工位 ${P.station.v} · 篩選：${esc(filters)} · 共 ${rows.length} 筆${rows.length > used.length ? `（列出前 ${used.length} 筆）` : ''} · 匯出 ${now}${liveVins.size ? ' · ＊為本次播放' : ''}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <thead><tr>${head.map((h) => `<th style="text-align:left;padding:5px 6px;background:#f2f4f7;border-bottom:2px solid #bbb">${h}</th>`).join('')}</tr></thead>
+        <tbody>${body}</tbody></table>
+      <p style="font-size:9px;color:#888;margin-top:8px">示範資料由情境腳本與狀態機產生；數值為假設。</p></div>`;
+    await html2pdf().set({
+      margin: [8, 8, 10, 8],
+      filename: `smart-arm-${trace.mode}-${new Date().toISOString().slice(0, 10)}.pdf`,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      pagebreak: { mode: ['css', 'legacy'] },
+    }).from(report).save();
+  } catch (err) {
+    alert(`${err.message}，請改用 CSV 或稍後再試。`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
 // 比較頁表格在手機改卡片時需要欄名
 $$('table.compare').forEach((t) => {
   const names = $$('thead th', t).map((th) => th.textContent);
@@ -807,7 +809,6 @@ new ResizeObserver(resize).observe(viewport);
 
 const clock = new THREE.Clock();
 let uiTimer = 0;
-const boltColor = { PENDING: 0x4a5568, OK: 0x3ccf6b, NG: 0xe0303a };
 let elapsed = 0;
 function step(dt) {
   elapsed += dt;
@@ -840,25 +841,15 @@ function step(dt) {
     env.tray.position.y = -P.trayDrop.v * ui.run.trayPos;
     fx.update(dt, time, { states: ui.run.states, arms, tray: env.tray });
     if (viewport.dataset.fx !== fx.mood) viewport.dataset.fx = fx.mood;
-    const pulse = 0.5 + 0.5 * Math.sin(time * 6);
-    for (const side of ['L', 'R']) {
-      const s = ui.run.states[side];
-      for (const id of SEQUENCE[side]) {
-        s.bolts[id].forEach((b, i) => {
-          const m = env.bolts[id][i].material;
-          const cur = s.expected && s.expected.zoneId === id && s.expected.boltIndex === i && (s.phase === 'A' || s.phase === 'C');
-          m.color.setHex(cur ? 0xffffff : boltColor[b]);
-          m.emissive.setHex(cur ? 0xf2c230 : b === 'PENDING' ? 0x000000 : boltColor[b]);
-          m.emissiveIntensity = cur ? 0.4 + pulse * 0.8 : 0.5;
-        });
-      }
-    }
+    env.paintBolts(ui.run.states, time);
+    env.setAndon(Math.max(...['L', 'R'].map((k) => LEVEL_RANK[ui.run.states[k].alarm?.level] ?? -1)), time);
     renderer.render(scene, view);
     labelRenderer.render(scene, view);
   }
 
   if (viewNow === 'sim' && sim) sim.frame(dt, time);
   if (viewNow === 'product' && productView) productView.frame(dt, time);
+  if (viewNow === 'station' && stationView) stationView.frame(dt, time);
 
   uiTimer += dt;
   if (ui.dirty || uiTimer > 0.2) {
@@ -866,9 +857,7 @@ function step(dt) {
     ui.dirty = false;
     renderTimeline();
     if (viewNow === 'arm') {
-      const html = screenHtml();
-      paint($('#mini-screen'), html);
-      paint($('#side-cards'), sideCardsHtml());
+      renderSideCards();
       paint($('#event-log'), logHtml());
     }
   }
@@ -879,10 +868,12 @@ function frame() {
 }
 // 測試用：網址加 ?debug 時可用 __step(dt, n) 手動推進畫面（背景分頁不跑動畫時）
 if (new URLSearchParams(location.search).has('debug')) window.__step = (dt = 1 / 30, n = 1) => { for (let i = 0; i < n; i++) step(dt); };
+if (new URLSearchParams(location.search).has('debug')) window.__views = { get product() { return productView; }, get sim() { return sim; }, get station() { return stationView; }, resize };
 
 // ── 啟動 ─────────────────────────────────────
-renderParts();
+buildSideCards();
 renderParams();
+arms.L.setLabelsVisible($('#opt-labels').checked);
 renderTraceSelects();
 goPreset('orbit', true);
 load(ui.scenarioId);

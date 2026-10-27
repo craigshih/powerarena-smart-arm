@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { P, SEQUENCE, zoneById, boltPosition } from './arm-params.js';
-import { EVENT_TYPES } from './arm-logic.js';
 import { createSmartArm } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun } from './scenarios.js';
 import { buildEnvironment } from './environment.js';
@@ -16,55 +15,16 @@ import { createAlertFx } from './alert-fx.js';
 
 // 現行手臂上同一時刻會發生什麼（依訪綱理解，待業主確認）
 const LEGACY_TEXT = {
-  EARLY_ATTEMPT: '工具照轉：承盤還撐著就把車身固定點鎖上了，沒有任何提示',
+  EARLY_ATTEMPT: '工具照轉：承盤還撐著就把上方螺絲鎖上了，沒有任何提示',
   TIGHTEN_NG: '沒有量測：扭力不足的這一顆被當成鎖好了',
-  SEQUENCE_ERROR: '順序錯了也鎖得下去，沒有人知道',
+  SEQUENCE_ERROR: '先鎖上方也鎖得下去，沒有人知道',
   PHASE_WARNING: '沒有倒數提醒',
   TIMEOUT: '沒有人知道已經超時，事後也查不到',
   AUTOMATION_FAULT: '承盤卡住，但工具仍然能轉；以為承盤降了就開始鎖，等於提前鎖附',
   TOOL_FAULT: '工具停了，這一顆有沒有鎖到位沒有紀錄',
 };
 
-export const OUTCOME = {
-  normal: {
-    act: '依 SOP 完成兩側 12 顆',
-    legacy: '結果一樣完成，但沒有任何扭力、角度紀錄。之後若有異音或客訴，查不到這台車哪一顆有問題。',
-    iot: '每顆都有扭力、角度、時間紀錄。A 鎖滿自動鎖住、承盤降下自動開放 C，師傅沒有多做任何動作。',
-  },
-  early: {
-    act: '等承盤時，順手想先鎖車身固定點',
-    legacy: '工具照轉，車身固定點在承盤撐起時就鎖緊。沒有聲音、沒有燈號，師傅不知道做錯；要等後段品檢或客訴才可能發現。',
-    iot: '工具不轉，握把紅燈閃並震動、廣播「提前鎖附！」。師傅當場放開扳機，等承盤降下再鎖；留下一筆「提前鎖附（已攔下）」。',
-  },
-  ng: {
-    act: '套筒沒咬合，第 2 顆只鎖到 52 N·m',
-    legacy: '沒有量測，這一顆被當成鎖好了，直接流到下一站。',
-    iot: '當場判 NG、不計數，廣播「扭力不足，請重鎖」。原地重鎖到合格才往下，兩筆紀錄都留下。',
-  },
-  timeout: {
-    act: '變速箱螺絲對不準，第一階段拖過檢查點',
-    legacy: '沒有倒數，也沒有人知道已經超時；事後查不到是哪一台、哪一顆拖到。',
-    iot: '剩 15 秒語音預警；超時當下廣播並記錄，班長事後查得到是變速箱第 1 顆對不準。不停線。',
-  },
-  sequence: {
-    act: '憑習慣先鎖變速箱，跳過左引擎腳',
-    legacy: '先鎖變速箱也鎖得下去，工具不知道自己在哪；順序錯了沒有人發現。',
-    iot: '（關節編碼器手臂）工具停在錯的區域就鎖住、握把黃燈閃；扣扳機時廣播「順序錯誤，請先鎖左引擎腳」。',
-  },
-  automation: {
-    act: '承盤下降到一半卡住，師傅在等',
-    legacy: '工具仍然能轉。師傅若以為承盤已降而開始鎖第二階段，就是提前鎖附；也分不出是設備還是人的問題。',
-    iot: '8 秒沒收到「下降完成」就判自動化錯誤，第二階段維持鎖定並通知班長；紀錄歸在「自動化錯誤」，不算師傅的錯。',
-  },
-  tool: {
-    act: '鎖到一半，工具通訊中斷',
-    legacy: '工具停了，但這一顆到底有沒有鎖到位沒有紀錄；師傅可能直接跳到下一顆。',
-    iot: '工具立刻停轉並鎖住（失效即安全），這一顆不計數；班長恢復後從同一顆重鎖，紀錄歸在「工具錯誤」。',
-  },
-};
-
 const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-const BOLT = { PENDING: 0x4a5568, OK: 0x3ccf6b, NG: 0xe0303a, DONE: 0x8fa3bf, EARLY: 0xff8a3d, HIDDEN: 0x8fa3bf };
 
 function makeWorld(legacy) {
   const scene = new THREE.Scene();
@@ -127,19 +87,18 @@ export function createSim(deps) {
     });
   }
 
-  const st = { id: 'early', side: 'L', run: null, playing: false, speed: 2, legacy: null, diff: [], counts: null };
+  const st = { id: 'early', side: 'L', run: null, playing: false, speed: 2, legacy: null, counts: null, chapters: [] };
 
   function resetLegacy() {
     const bolts = {};
     for (const side of ['L', 'R']) for (const id of SEQUENCE[side]) bolts[id] = Array(zoneById(id).bolts).fill('PENDING');
     st.legacy = { bolts, spinUntil: { L: -1, R: -1 }, missed: [] };
-    st.diff = [];
     st.counts = { blocked: 0, records: 0 };
   }
 
-  function load(id, autoplay = false) {
-    st.id = id;
-    st.run = createRun(scenarioById(id), { encoder: true, spec: getSpec(), vin: 'TWPA2026C00000001', epoch: Date.now() });
+  const newRun = () => createRun(scenarioById(st.id), { encoder: true, spec: getSpec(), vin: 'TWPA2026C00000001', epoch: Date.now() });
+  function restart() {
+    st.run = newRun();
     resetLegacy();
     fx.reset();
     for (const w of Object.values(worlds)) {
@@ -149,10 +108,62 @@ export function createSim(deps) {
       }
     }
     apply(st.run.advance(0), true);
+  }
+  function load(id, autoplay = false) {
+    st.id = id;
+    restart();
     $('#sim-scenario').value = id;
-    renderOutcome();
+    buildChapters();
     st.playing = autoplay;
     syncButton();
+  }
+
+  // 跳到指定時刻：重新跑一次（不出聲），手臂直接就位
+  function seek(t) {
+    restart();
+    for (let x = 0; x < t; x += 0.25) apply(st.run.advance(Math.min(x + 0.25, t)), true);
+    for (const w of Object.values(worlds)) {
+      for (const side of ['L', 'R']) {
+        const target = st.run.targets[side];
+        if (target) w.arms[side].setToolTarget(toolPoint(target), { instant: true });
+        else w.arms[side].setToolRest({ instant: true });
+      }
+    }
+    renderStatus();
+  }
+
+  // 章節按鈕：開始、每種警示的前一刻、承盤下降、鎖上方、完成
+  const ALERT_LABEL = { EARLY_ATTEMPT: '提前鎖附', SEQUENCE_ERROR: '順序錯誤', TIGHTEN_NG: '扭力不足', PHASE_WARNING: '即將超時',
+    TIMEOUT: '超時', AUTOMATION_FAULT: '承盤卡住', TOOL_FAULT: '工具故障' };
+  function buildChapters() {
+    const run = st.run;
+    const marks = run.markers();
+    const list = [{ t: 0, label: '開始' }];
+    const seen = new Set();
+    for (const m of marks) {
+      if (seen.has(m.type) || !ALERT_LABEL[m.type]) continue;
+      seen.add(m.type);
+      list.push({ t: Math.max(0, m.t - 1.5), label: ALERT_LABEL[m.type], alert: m.level });
+    }
+    const tray = run.steps.find((x) => x.ev?.type === 'tray:lowering');
+    if (tray) list.push({ t: Math.max(0, tray.t - 1), label: '承盤下降' });
+    const lowered = run.steps.filter((x) => x.ev?.type === 'tray:lowered').pop();
+    const upper = run.steps.find((x) => x.move && zoneById(x.move.zoneId)?.phase === 'C' && (!lowered || x.t >= lowered.t));
+    if (upper) list.push({ t: upper.t, label: '鎖上方' });
+    list.push({ t: Math.max(0, run.duration - 4), label: '完成' });
+    list.sort((a, b) => a.t - b.t);
+    st.chapters = list;
+    $('#sim-chapters').innerHTML = list.map((c, i) => `<button type="button" data-ch="${i}" class="${c.alert ? `ch-${c.alert}` : ''}"><span class="num">${fmtT(c.t)}</span>${c.label}</button>`).join('');
+    const slider = $('#sim-slider');
+    slider.max = run.duration;
+    const color = { warn: '#f0b545', alarm: '#e0303a', fault: '#ff5c8a' };
+    const dedupe = new Set();
+    $('#sim-marks').innerHTML = marks.filter((m) => {
+      const k = `${m.type}@${Math.round(m.t)}`;
+      if (dedupe.has(k)) return false;
+      dedupe.add(k);
+      return true;
+    }).map((m) => `<i style="left:${(m.t / run.duration) * 100}%;--c:${color[m.level]}"></i>`).join('');
   }
 
   const toolPoint = (t) => new THREE.Vector3(...boltPosition(t.zoneId, t.boltIndex)).add(new THREE.Vector3(0, 0.03, 0));
@@ -181,10 +192,7 @@ export function createSim(deps) {
     }
     for (const a of out.alerts) {
       worlds.iot.ops[a.side].say(`「${a.say || a.text}」`, a.level === 'info' ? 'info' : 'voice', 3.2);
-      if (a.level !== 'info' && LEGACY_TEXT[a.type]) {
-        worlds.old.ops[a.side].say('（沒有任何提示）', 'think', 3.2);
-        st.diff.push({ t: run.t, side: a.side, type: a.type, iot: a.text, old: LEGACY_TEXT[a.type] });
-      }
+      if (a.level !== 'info' && LEGACY_TEXT[a.type]) worlds.old.ops[a.side].say('（沒有任何提示）', 'think', 3.2);
       if (!silent) {
         if (a.level !== 'info') chime(a.level);
         speak(a.say, a.level === 'alarm' || a.level === 'fault');
@@ -198,14 +206,6 @@ export function createSim(deps) {
     $('#sim-play').textContent = st.playing ? '暫停' : '播放';
   }
 
-  function renderOutcome() {
-    const o = OUTCOME[st.id];
-    const sc = scenarioById(st.id);
-    $('#sim-outcome').innerHTML = `<thead><tr><th>情境</th><th>師傅做了什麼</th><th>現行手臂</th><th>IoT 手臂</th></tr></thead>
-      <tbody><tr><th>${esc(sc.title)}</th><td data-label="師傅做了什麼">${esc(o.act)}</td>
-      <td data-label="現行手臂">${esc(o.legacy)}</td><td data-label="IoT 手臂">${esc(o.iot)}</td></tr></tbody>`;
-  }
-
   let lastStatus = '';
   function renderStatus() {
     const { run, legacy, counts, side } = st;
@@ -216,34 +216,32 @@ export function createSim(deps) {
     const early = total.filter((b) => b === 'EARLY').length;
     const a = s.alarm && s.alarm.level !== 'info' ? s.alarm : null;
     const iotTool = { ENABLED: '可鎖附', RUNNING: '鎖附中', FAULT: '故障・已鎖定' }[s.tool] ?? '已鎖定';
+    const missed = legacy.missed.length;
     const oldHtml = `
       <dl class="sim-kv">
         <dt>工具</dt><dd>${spinning ? '<b class="t-run">鎖附中</b>' : '隨時可轉'}</dd>
-        <dt>師傅聽到／看到</dt><dd class="muted">${a ? '沒有任何提示' : '—'}</dd>
-        <dt>已鎖螺絲</dt><dd>${tightened} 顆（${side === 'L' ? '左' : '右'}側）${early ? `，<b class="t-warn">其中 ${early} 顆提前鎖上</b>` : ''}</dd>
-        <dt>扭力紀錄</dt><dd>0 筆</dd>
-        <dt>沒被發現的問題</dt><dd><b class="${legacy.missed.length ? 't-bad' : ''}">${legacy.missed.length} 件</b></dd>
+        <dt>提示</dt><dd class="muted">${a ? '沒有' : '—'}</dd>
+        <dt>已鎖</dt><dd>${tightened} 顆${early ? ` <b class="t-warn">（${early} 顆提前）</b>` : ''}</dd>
+        <dt>問題</dt><dd><b class="${missed ? 't-bad' : ''}">${missed ? `${missed} 件沒被發現` : '—'}</b></dd>
       </dl>`;
     const iotHtml = `
       <dl class="sim-kv">
         <dt>工具</dt><dd><b class="${s.tool === 'ENABLED' || s.tool === 'RUNNING' ? 't-ok' : 't-warn'}">${iotTool}</b></dd>
-        <dt>師傅聽到／看到</dt><dd>${a ? `<b class="t-bad">「${esc(a.say || a.text)}」</b>` : '—'}</dd>
-        <dt>已鎖螺絲</dt><dd>${s.counts.A.done + s.counts.C.done} / ${s.counts.A.total + s.counts.C.total} 顆（${side === 'L' ? '左' : '右'}側）</dd>
-        <dt>扭力紀錄</dt><dd>${counts.records} 筆</dd>
-        <dt>當場攔下／判定</dt><dd><b class="${counts.blocked ? 't-ok' : ''}">${counts.blocked} 件</b></dd>
+        <dt>提示</dt><dd>${a ? `<b class="t-bad">「${esc(a.say || a.text)}」</b>` : '—'}</dd>
+        <dt>已鎖</dt><dd>${s.counts.A.done + s.counts.C.done} / ${s.counts.A.total + s.counts.C.total} 顆・紀錄 ${counts.records} 筆</dd>
+        <dt>問題</dt><dd><b class="${counts.blocked ? 't-ok' : ''}">${counts.blocked ? `${counts.blocked} 件當場處理` : '—'}</b></dd>
       </dl>`;
-    const diff = st.diff.length
-      ? st.diff.map((d) => `<li><time>${fmtT(d.t)}</time><span class="side">${d.side}</span><b>${EVENT_TYPES[d.type].label}</b>
-          <div class="sim-cmp"><p><i>現行</i>${esc(d.old)}</p><p><i>IoT</i>${esc(d.iot)}</p></div></li>`).join('')
-      : '<li class="muted">播放後，兩邊不一樣的時刻會列在這裡。</li>';
-    const html = oldHtml + iotHtml + diff + run.t + side;
+    const html = oldHtml + iotHtml + Math.floor(run.t * 10) + side;
     if (html === lastStatus) return;
     lastStatus = html;
     $('#sim-status-old').innerHTML = oldHtml;
     $('#sim-status-iot').innerHTML = iotHtml;
-    $('#sim-diff').innerHTML = diff;
     $('#sim-fill').style.width = `${(run.t / run.duration) * 100}%`;
+    $('#sim-slider').value = run.t;
     $('#sim-time').textContent = `${fmtT(run.t)} / ${fmtT(run.duration)}`;
+    let cur = 0;
+    st.chapters.forEach((c, i) => { if (run.t >= c.t - 0.01) cur = i; });
+    document.querySelectorAll('#sim-chapters [data-ch]').forEach((b) => b.classList.toggle('on', +b.dataset.ch === cur));
   }
 
   function resize() {
@@ -266,7 +264,6 @@ export function createSim(deps) {
       if (st.run.done) { st.playing = false; syncButton(); }
     }
     const { run, legacy } = st;
-    const pulse = 0.5 + 0.5 * Math.sin(time * 6);
     for (const [key, w] of Object.entries(worlds)) {
       w.env.tray.position.y = -P.trayDrop.v * run.trayPos;
       for (const side of ['L', 'R']) {
@@ -282,17 +279,11 @@ export function createSim(deps) {
           top: run.targets[side] ? arm.getToolTop() : null,
           react: reacting ? arm.getControllerPos() : null,
         });
-        for (const id of SEQUENCE[side]) {
-          const states = key === 'old' ? legacy.bolts[id] : s.bolts[id];
-          states.forEach((b, i) => {
-            const m = w.env.bolts[id][i].material;
-            const cur = key === 'iot' && s.expected?.zoneId === id && s.expected.boltIndex === i && (s.phase === 'A' || s.phase === 'C');
-            m.color.setHex(cur ? 0xffffff : BOLT[b]);
-            m.emissive.setHex(cur ? 0xf2c230 : b === 'PENDING' ? 0x000000 : BOLT[b]);
-            m.emissiveIntensity = cur ? 0.4 + pulse * 0.8 : 0.45;
-          });
-        }
       }
+      // 現行手臂沒有「下一顆」提示，只看得到鎖了沒（提前鎖上的標成橘紅）
+      w.env.paintBolts(key === 'old'
+        ? { L: { bolts: legacy.bolts }, R: { bolts: legacy.bolts } }
+        : run.states, time);
       const v = views[key];
       if (key === 'iot') {
         fx.update(dt, time, { states: run.states, arms: w.arms, tray: w.env.tray });
@@ -312,7 +303,15 @@ export function createSim(deps) {
     if (st.run.done) load(st.id, true);
     else { st.playing = !st.playing; syncButton(); }
   });
-  $('#sim-restart').addEventListener('click', () => { unlockAudio(); load(st.id, true); });
+  $('#sim-chapters').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ch]');
+    if (!b) return;
+    unlockAudio();
+    seek(st.chapters[+b.dataset.ch].t);
+    st.playing = true;
+    syncButton();
+  });
+  $('#sim-slider').addEventListener('input', (e) => seek(+e.target.value));
   for (const b of document.querySelectorAll('[data-sim-speed]')) {
     b.addEventListener('click', () => {
       st.speed = +b.dataset.simSpeed;

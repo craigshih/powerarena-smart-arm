@@ -1,166 +1,79 @@
-// 工站環境（UI 層）：高台、上方軌道、車輛、引擎、承盤、鎖附區域與螺絲。
-// 「手臂與情境」與「現行 vs IoT」兩個畫面共用。座標沿用場域模型。
+// 工站環境（UI 層）：直接使用場域模型（powerarena-station-twin）的 buildStation，
+// 所有 3D 畫面的高台、車輛、引擎、承盤、四個螺絲孔位、滑軌、吊架與攝影機都和場域模型一致。
+// 場域模型裡的靜態作業員與舊式懸吊工具會藏起來，改由會動的師傅與改良版手臂取代。
 import * as THREE from 'three';
-import { P, ZONES, SPEC, boltPosition } from './arm-params.js';
+import { buildStation } from './twin/scene.js';
+import { PHASE_COLOR } from './twin/params.js';
 
-export function buildEnvironment(root) {
-  const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.1, ...o });
-  const M = {
-    floor: mat(0x0d1118, { roughness: 1 }),
-    platform: mat(0x2f3a52),
-    platformTop: mat(0x3d4a66, { roughness: 0.6 }),
-    rail: mat(0xf2c230, { roughness: 0.5 }),
-    steel: mat(0x6b7280, { metalness: 0.6, roughness: 0.4 }),
-    shell: mat(0x4d6680, { roughness: 0.45, metalness: 0.35, transparent: true, opacity: 0.22, depthWrite: false }),
-    engine: mat(0x8a929e, { roughness: 0.5, metalness: 0.6 }),
-    trans: mat(0x6f7884, { roughness: 0.5, metalness: 0.6 }),
-    bracket: mat(0x555d6b, { roughness: 0.5, metalness: 0.6 }),
-    tray: mat(0xd2552c, { roughness: 0.6 }),
-    worker: mat(0x7b8aa6),
-    workerDark: mat(0x3b4459),
-    hat: mat(0xf2c230, { roughness: 0.4 }),
-    skin: mat(0xd7b49a),
-  };
-  const box = (w, h, d, m, x = 0, y = 0, z = 0) => {
-    const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-    o.position.set(x, y, z);
-    o.castShadow = o.receiveShadow = true;
-    return o;
-  };
-  const span = (x0, x1, y0, y1, z0, z1, m) => box(x1 - x0, y1 - y0, z1 - z0, m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const out = { pickables: [], bolts: {} };
-  const info = (obj, data) => obj.traverse((o) => { if (o.isMesh) { o.userData.info = data; out.pickables.push(o); } });
+const STATUS_COLOR = { OK: 0x3ccf6b, NG: 0xe0303a, DONE: 0x8fa3bf, HIDDEN: 0x8fa3bf, EARLY: 0xff5a1f };
 
-  const H = P.platformHeight.v;
-  const inner = P.platformInnerX.v;
-  const W = 0.9;
-  const z0 = -2.6;
-  const z1 = 4.2;
+export function buildEnvironment(root, { frustums = false, dims = false, tags = false, stepTags = true } = {}) {
+  const station = buildStation(root);
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), M.floor);
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  root.add(floor);
-  const grid = new THREE.GridHelper(40, 80, 0x1a2333, 0x131a26);
-  grid.position.y = 0.002;
-  root.add(grid);
-
-  for (const s of [1, -1]) {
-    const g = new THREE.Group();
-    const xa = s * inner;
-    const xb = s * (inner + W);
-    g.add(span(Math.min(xa, xb), Math.max(xa, xb), 0, H - 0.04, z0, z1, M.platform));
-    g.add(span(Math.min(xa, xb), Math.max(xa, xb), H - 0.04, H, z0, z1, M.platformTop));
-    const edge = span(Math.min(xa, xa + s * 0.04), Math.max(xa, xa + s * 0.04), H, H + 0.006, z0, z1, M.rail);
-    g.add(edge);
-    const xr = s * (inner + W - 0.03);
-    for (let z = z0 + 0.1; z <= z1; z += 1.35) g.add(box(0.04, 1.05, 0.04, M.rail, xr, H + 0.525, z));
-    g.add(span(xr - 0.02, xr + 0.02, H + 1.03, H + 1.07, z0 + 0.1, z1 - 0.1, M.rail));
-    info(g, { title: s > 0 ? '作業高台（左）' : '作業高台（右）', id: 'env-platform', rows: [['高台面', `y = ${H} m（已確認）`], ['內緣', `x = ±${inner} m（推算）`], ['現場', '空間狹窄，僅一人可側向通行']] });
-    root.add(g);
-
-    // 上方工具軌道與吊架（位置沿用場域模型）
-    const rail = new THREE.Group();
-    const rx = s * P.railX.v;
-    rail.add(span(rx - 0.05, rx + 0.05, P.railY.v + 0.01, P.railY.v + 0.11, -0.9, 3.6, M.rail));
-    for (const pz of [-0.85, 3.6]) rail.add(box(0.08, P.railY.v + 0.11 - H, 0.08, M.rail, s * (inner + 0.2), (P.railY.v + 0.11 + H) / 2, pz));
-    for (const pz of [-0.85, 3.6]) rail.add(span(Math.min(rx, s * (inner + 0.2)) - 0.04, Math.max(rx, s * (inner + 0.2)) + 0.04, P.railY.v + 0.05, P.railY.v + 0.11, pz - 0.04, pz + 0.04, M.rail));
-    info(rail, { title: '上方工具軌道', id: 'env-rail', rows: [['吊點', `x = ±${P.railX.v}、y = ${P.railY.v} m（沿用場域模型）`], ['說明', '手臂原點設在這個吊點，台車沿軌道前後移動']] });
-    root.add(rail);
+  // CSS2DRenderer 不會沿用父層的 visible，要把圖層內的文字標籤一起切換
+  function setLayer(name, on) {
+    const layer = station.layers[name];
+    if (!layer) return;
+    layer.visible = on;
+    layer.traverse((o) => { if (o.isCSS2DObject) o.visible = on && (o.element.classList.contains('tag-step') ? stepTagsOn : tagsOn); });
   }
-  root.add(span(-(inner + 0.24), inner + 0.24, P.railY.v + 0.05, P.railY.v + 0.12, 3.56, 3.64, M.rail));
-
-  // 車輛（簡化）、引擎、變速箱
-  const car = new THREE.Group();
-  for (const s of [1, -1]) car.add(span(s * 0.92, s * 0.965, 1.55, 2.37, -2.3, 2.3, M.shell));
-  car.add(span(-0.965, 0.965, 1.55, 1.8, 2.22, 2.32, M.shell));
-  car.add(span(-0.9, 0.9, 2.37, 2.95, -1.7, 0.55, M.shell));
-  info(car, { title: '車輛（簡化）', id: 'env-car', rows: [['引擎室寬', `${P.bayWidth.v} m（已確認）`], ['說明', '只畫出外形，方便看到手臂與鎖附區域']] });
-  root.add(car);
-  const pt = new THREE.Group();
-  pt.add(span(-0.35, 0.35, 1.52, 2.22, 1.45, 2.05, M.engine));
-  pt.add(span(0.2, 0.62, 1.55, 2.02, 1.05, 1.48, M.trans));
-  for (const s of [1, -1]) pt.add(span(Math.min(s * 0.35, s * 0.66), Math.max(s * 0.35, s * 0.66), 1.94, 2.02, 1.66, 1.9, M.bracket));
-  for (const s of [1, -1]) pt.add(span(Math.min(s * 0.62, s * 0.86), Math.max(s * 0.62, s * 0.86), 1.66, 1.72, 1.3, 1.7, M.bracket));
-  info(pt, { title: '引擎與變速箱', id: 'env-powertrain', rows: [['說明', '螺絲已預鎖在引擎上，師傅不需要逐顆拿螺絲'], ['問題', '不在拿螺絲，而在「用工具提早鎖」']] });
-  root.add(pt);
-
-  // 承盤
-  const tray = new THREE.Group();
-  tray.add(span(-0.62, 0.62, 1.44, 1.5, 1.15, 2.2, M.tray));
-  tray.add(box(0.12, 1.44, 0.12, M.steel, 0, 0.72, 1.68));
-  info(tray, { title: '自動升降承盤', id: 'env-tray', rows: [['下降', `${P.trayDrop.v} m、約 ${P.trayDuration.v} 秒（業主估）`], ['訊號', '「開始下降」「下降完成」接到兩側工具控制器'], ['逾時', `${P.trayFaultTimeout.v} 秒沒降到底判自動化錯誤（假設）`]] });
-  root.add(tray);
-  out.tray = tray;
-
-  // 鎖附區域與螺絲
-  const zones = new THREE.Group();
-  for (const z of ZONES) {
-    const color = z.phase === 'A' ? 0xff8a3d : 0x3dd6d0;
-    const geo = new THREE.BoxGeometry(...z.size);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.07, depthWrite: false }));
-    m.position.set(z.pos[0], H + z.pos[1], z.pos[2]);
-    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.75 })));
-    zones.add(m);
-    info(m, { title: `${z.label}（${z.id}）`, id: `zone-${z.id}`, rows: [['階段', z.phase === 'A' ? 'A 第一階段' : 'C 第二階段'], ['螺絲', `${z.bolts} 顆（假設）`], ['規格', `${SPEC[z.id].torque.v} N·m ±${SPEC[z.id].tol.v}%、${SPEC[z.id].angleMin.v}–${SPEC[z.id].angleMax.v}°（假設）`]] });
-    out.bolts[z.id] = Array.from({ length: z.bolts }, (_, i) => {
-      const b = new THREE.Mesh(new THREE.SphereGeometry(0.017, 14, 10), new THREE.MeshStandardMaterial({ color: 0x5d6a80, emissive: 0x000000, roughness: 0.4 }));
-      b.position.fromArray(boltPosition(z.id, i));
-      zones.add(b);
-      return b;
-    });
-  }
-  root.add(zones);
-  out.zones = zones;
-
-  // 車體輸送滑軌：坑道地面兩條導軌、枕木、承載台車與行進方向箭頭（車頭朝 +Z 前進）
-  const conveyor = new THREE.Group();
-  const railMat = mat(0x8a929e, { metalness: 0.75, roughness: 0.3 });
-  const sleeperMat = mat(0x2a2f38, { roughness: 0.9 });
-  const carrierMat = mat(0x3d5a80, { metalness: 0.4, roughness: 0.5 });
-  const cz0 = -7;
-  const cz1 = 9;
-  for (const x of [-0.5, 0.5]) {
-    conveyor.add(span(x - 0.035, x + 0.035, 0.02, 0.05, cz0, cz1, railMat)); // 底板
-    conveyor.add(span(x - 0.008, x + 0.008, 0.05, 0.13, cz0, cz1, railMat)); // 腹板
-    conveyor.add(span(x - 0.03, x + 0.03, 0.13, 0.16, cz0, cz1, railMat)); // 軌頭
-  }
-  for (let z = cz0 + 0.2; z < cz1; z += 0.6) conveyor.add(span(-0.65, 0.65, 0, 0.02, z - 0.06, z + 0.06, sleeperMat));
-  // 承載台車：車輪壓在導軌上，立柱撐住車體底部（避開前方承盤）
-  const carrier = new THREE.Group();
-  carrier.add(span(-0.58, 0.58, 0.16, 0.28, -2.15, -0.25, carrierMat));
-  for (const z of [-2.0, -0.4]) {
-    for (const x of [-0.5, 0.5]) {
-      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 18), M.steel);
-      w.rotation.z = Math.PI / 2;
-      w.position.set(x, 0.22, z);
-      w.castShadow = true;
-      carrier.add(w);
-    }
-    for (const x of [-0.42, 0.42]) carrier.add(box(0.09, 1.27, 0.09, carrierMat, x, 0.28 + 1.27 / 2, z));
-    carrier.add(span(-0.5, 0.5, 1.5, 1.55, z - 0.08, z + 0.08, carrierMat));
-  }
-  conveyor.add(carrier);
-  // 行進方向箭頭（地面黃色 V 字）
-  const chevron = new THREE.MeshBasicMaterial({ color: 0xf2c230, transparent: true, opacity: 0.55 });
-  for (let z = cz0 + 1; z < cz1; z += 1.6) {
-    for (const s of [1, -1]) {
-      const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.28), chevron);
-      bar.rotation.x = -Math.PI / 2;
-      bar.rotation.z = s * 0.75;
-      bar.position.set(s * 0.09, 0.012, z);
-      conveyor.add(bar);
+  let tagsOn = tags;
+  let stepTagsOn = stepTags;
+  function setTags(all, steps = stepTagsOn) {
+    tagsOn = all;
+    stepTagsOn = steps;
+    for (const layer of Object.values(station.layers)) {
+      layer.traverse((o) => {
+        if (!o.isCSS2DObject) return;
+        const isStep = o.element.classList.contains('tag-step');
+        o.visible = layer.visible && (isStep ? steps : all);
+      });
     }
   }
-  info(conveyor, { title: '車體輸送滑軌', id: 'env-conveyor', rows: [
-    ['結構', '坑道地面兩條導軌，承載台車撐住車體底部，車頭朝前（+Z）進站'],
-    ['節拍', `車頭進站到車尾出站約 ${480} 秒（已確認）`],
-    ['原型', '車輛靜止顯示；若實際邊走邊鎖，關節編碼器需補償輸送線位置'],
-  ] });
-  root.add(conveyor);
-  out.conveyor = conveyor;
 
-  return out;
+  setLayer('people', false);
+  setLayer('frustums', frustums);
+  setLayer('dims', dims);
+  setTags(tags, stepTags);
+
+  const pickables = [];
+  for (const [name, layer] of Object.entries(station.layers)) {
+    if (name === 'people' || name === 'frustums' || name === 'dims') continue;
+    layer.traverse((o) => { if (o.isMesh && o.userData.info) pickables.push(o); });
+  }
+
+  // 螺絲孔位上色：未鎖（步驟色）、OK 綠、NG 紅；下一顆外圈脈動
+  function paintBolts(states, time) {
+    for (const z of station.zones) {
+      const s = states[z.cfg.side];
+      if (!s) continue;
+      const st = s.bolts?.[z.cfg.id]?.[0] ?? 'PENDING';
+      const cur = s.expected?.zoneId === z.cfg.id && (s.phase === 'A' || s.phase === 'C');
+      z.ringMat.color.setHex(st === 'PENDING' ? PHASE_COLOR[z.cfg.phase] : STATUS_COLOR[st]);
+      z.ring.scale.setScalar(cur ? 1.2 + 0.18 * Math.sin(time * 6) : 1);
+      z.material.opacity = cur ? 0.24 : 0.06;
+      z.edges.material.opacity = cur ? 0.95 : 0.35;
+    }
+  }
+
+  // 工站三色燈：依最嚴重的警示亮燈
+  function setAndon(level, time) {
+    const [red, yellow, green] = station.lamps;
+    const blink = Math.floor(time * 2.8) % 2 === 0;
+    red.emissiveIntensity = level >= 2 ? (blink ? 2.2 : 0.4) : 0.05;
+    yellow.emissiveIntensity = level === 1 ? (blink ? 2.2 : 0.3) : 0.05;
+    green.emissiveIntensity = level < 1 ? 1.6 : 0.05;
+  }
+
+  return {
+    station,
+    tray: station.tray,
+    pickables,
+    setLayer,
+    setTags,
+    paintBolts,
+    setAndon,
+  };
 }
 
 // 廠房背景：頂燈、鋼柱、牆面、地坪與遠處的其他工站，讓「師傅視角」看起來像真的車廠。

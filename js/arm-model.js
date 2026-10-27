@@ -25,6 +25,7 @@ export const PRINCIPLES = {
 export const ARM_PARTS = [
   {
     key: 'enable', n: 1, title: '工具內建致能／鎖定', tag: '致能鎖定', principles: [1, 2],
+    short: '承盤沒降，工具不轉', beforeShort: '工具隨時能轉',
     spec: ['controllerPsets', 'toolTorqueRange'],
     before: '工具隨時都能轉，靠師傅自己記得等承盤。',
     what: '控制器讀承盤 PLC 的「下降完成」訊號。A 階段只開放第一階段的螺絲數，鎖滿就自動鎖住工具；承盤降到底才開放 C。',
@@ -33,6 +34,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'torque', n: 2, title: '扭力／角度感測', tag: '扭力角度', principles: [2],
+    short: '每顆回報扭力、角度', beforeShort: '鎖得好不好沒人知道',
     spec: ['toolTorqueRange', 'toolAngleRes'],
     before: '不回報扭力與角度，鎖得好不好沒人知道。',
     what: '工具內建扭力感測器與角度編碼器，每顆螺絲回報扭力與角度，控制器當場判 OK／NG。NG 不計數，要原地重鎖。',
@@ -41,6 +43,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'ring', n: 3, title: '握把 LED 環＋震動', tag: 'LED 環', principles: [1],
+    short: '握把燈號＋震動', beforeShort: '沒有任何提示',
     spec: ['ringSignals'],
     before: '握把上沒有任何燈號或震動。',
     what: '綠＝可鎖附、藍＝鎖附中、黃＝已鎖定或位置不對、紅閃＝錯誤；錯誤時握把震動。',
@@ -49,6 +52,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'controller', n: 4, title: '控制器三色燈＋喇叭', tag: '燈號喇叭', principles: [1, 3],
+    short: '語音廣播＋三色燈', beforeShort: '沒有聲音、燈號',
     spec: ['speakerLevel'],
     before: '沒有語音、沒有工位燈號。',
     what: '控制器固定在軌道吊架上，不在工具上，不會晃。喇叭播「提前鎖附！提前鎖附！」等語音，三色燈同步工位狀態。',
@@ -57,6 +61,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'encoder', n: 5, title: '關節編碼器（選配，評估中）', tag: '編碼器', principles: [1, 2, 3],
+    short: '知道工具在哪個孔位', beforeShort: '不知道工具在哪',
     spec: ['encoderRes', 'encoderZoneTol'],
     before: '不知道工具停在哪個區域。',
     what: '台車、兩個旋轉關節與平衡器升降都裝編碼器，控制器算出工具停在哪個區域。順序錯了直接鎖住工具，不必靠攝影機。',
@@ -65,6 +70,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'plc', n: 6, title: '承盤 PLC 訊號（I/O）', tag: 'PLC 訊號', principles: [2, 3],
+    short: '直接讀承盤訊號', beforeShort: '和承盤沒有連線',
     spec: ['plcSignals', 'trayFaultTimeout'],
     before: '工具和承盤沒有連線，各做各的。',
     what: '控制器接承盤的「開始下降」「下降完成」數位訊號。承盤開始下降 8 秒內沒收到「下降完成」，判自動化錯誤。',
@@ -73,6 +79,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'key', n: 7, title: '班長鑰匙開關（降級模式）', tag: '鑰匙開關', principles: [3],
+    short: '故障時班長切降級', beforeShort: '只能停線或照做',
     spec: ['keyModes'],
     before: '故障時只能停線或照做，沒有任何紀錄。',
     what: '故障時由班長轉鑰匙切換，承盤連鎖暫停、回到現行作業方式，全程記錄 BYPASS 事件。',
@@ -81,6 +88,7 @@ export const ARM_PARTS = [
   },
   {
     key: 'screen', n: 8, title: '手臂螢幕', tag: '手臂螢幕', principles: [1, 3],
+    short: '低頭就看到狀態與修正方式', beforeShort: '沒有螢幕',
     spec: ['screenSize', 'screenBrightness', 'screenRating', 'screenDistance'],
     before: '沒有螢幕，靠記憶與班長口頭提醒。',
     what: '小螢幕裝在平衡器外管下端，跟著工具移動、面向師傅：大字顯示目前步驟、這一側每顆螺絲的狀態，錯誤時整面變色並寫出怎麼修正。',

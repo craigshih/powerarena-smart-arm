@@ -271,8 +271,10 @@ export function createArmLogic(options = {}) {
       const zone = zoneId ? zoneById(zoneId) : null;
       if (zone && zone.side !== s.side) return;
 
-      // 承盤還沒降下來就要鎖第二階段：控制器不讓工具轉
-      if (s.phase === 'B' || (zone && zone.phase === 'C' && !trayReady())) {
+      // 下方螺絲還沒鎖就跑去鎖上方：順序錯誤（需要編碼器才知道工具在哪個孔位）
+      const skippedA = zone && zone.phase === 'C' && s.phase === 'A' && !phaseDone('A');
+      // 下方鎖完、承盤還沒降下來就要鎖上方：提前鎖附，控制器不讓工具轉
+      if (!skippedA && (s.phase === 'B' || (zone && zone.phase === 'C' && !trayReady()))) {
         const target = zone ?? zoneById(nextBolt('C')?.zoneId ?? zonesOf('C')[0]);
         rec('EARLY_ATTEMPT', { zoneId: target.id, boltIndex: nextInZone(target.id) });
         alarm('EARLY_ATTEMPT', 'alarm', '提前鎖附！承盤尚未下降', '提前鎖附！提前鎖附！', v('alarmHold'));
@@ -473,13 +475,13 @@ export function describe(state) {
     case 'IDLE': return { step: '—', title: '等待車輛進站', sub: '工具待機', tone: 'muted', tray };
     case 'A': return {
       step: 'A', title: '第一階段鎖附', tone: 'orange', tray,
-      sub: state.tray === 'UP' ? '引擎腳・變速箱' : `${tray}・請補完第一階段`,
+      sub: state.tray === 'UP' ? '下方螺絲（左下、右下）' : `${tray}・請補完第一階段`,
     };
     case 'B': return {
       step: 'B', title: state.tray === 'LOWERING' ? '承盤下降中' : '等待承盤下降', tone: 'yellow', tray,
       sub: '第一階段完成・工具已鎖定',
     };
-    case 'C': return { step: 'C', title: '第二階段鎖附', sub: '車身固定點', tone: 'teal', tray };
+    case 'C': return { step: 'C', title: '第二階段鎖附', sub: '上方螺絲（左上、右上）', tone: 'teal', tray };
     default: return { step: '✓', title: '本車完成', sub: '工具已鎖定，等待下一台', tone: 'green', tray };
   }
 }

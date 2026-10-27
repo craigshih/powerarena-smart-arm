@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { P, SEQUENCE, armMount, boltPosition } from './arm-params.js';
-import { createSmartArm, drawArmScreen, ARM_PARTS, PRINCIPLES } from './arm-model.js';
+import { P, armMount, boltPosition } from './arm-params.js';
+import { createSmartArm, drawArmScreen, ARM_PARTS } from './arm-model.js';
 import { scenarioById, createRun } from './scenarios.js';
 import { buildEnvironment, addFactoryBackdrop } from './environment.js';
 import { createOperator } from './operator.js';
@@ -16,7 +16,6 @@ import { createAlertFx } from './alert-fx.js';
 const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
 const NEW_KEYS = ARM_PARTS.map((p) => p.key);
 const HANG_Y = P.railY.v;
-const STATUS = { confirmed: '已確認', derived: '推算', assumed: '假設' };
 
 // 沿用的部件（點到時顯示）
 const BASE = {
@@ -25,24 +24,36 @@ const BASE = {
   balancer: { title: '平衡器', text: '抵銷工具重量，師傅輕推就能上下。沿用工廠原有，新款在外管下端加裝手臂螢幕。' },
 };
 
-// 狀態示範：情境與時刻；舊款同一時刻會怎樣；use 是手臂螢幕對師傅的作用
+// 狀態示範：情境與時刻；舊款同一時刻的樣子；look 是新款手臂上的顏色與圖示
 export const DEMOS = [
-  { key: 'ready', label: '可鎖附', id: 'normal', t: 9.5, old: '隨時可轉，沒有任何提示',
-    use: { title: '知道現在該鎖哪一顆', see: '大字步驟 A，白框標出下一顆。', act: '照白框鎖，不用靠記憶記順序。' } },
-  { key: 'running', label: '鎖附中', id: 'normal', t: 8.0, old: '鎖附中，但不回報扭力', oldRun: true },
-  { key: 'warn', label: '即將超時', id: 'timeout', t: 30, old: '沒有倒數提醒',
-    use: { title: '知道還剩多少時間', see: '右上角倒數變黃，底部寫出剩幾秒。', act: '加快完成，不必抬頭找時鐘。' } },
-  { key: 'wait', label: '等承盤', id: 'normal', t: 30, old: '仍然能轉：這時候鎖下去就是提前鎖附' },
-  { key: 'early', label: '提前鎖附', id: 'early', t: 31, old: '工具照轉，車身固定點提前鎖上', oldRun: true,
-    use: { title: '被攔下時，知道為什麼', see: '「提前鎖附！承盤尚未下降」→ 放開扳機，等承盤降下。', act: '放開扳機等承盤，不會以為工具壞了。' } },
-  { key: 'ng', label: '扭力不足', id: 'ng', t: 9.6, old: '沒有量測，被當成鎖好了',
-    use: { title: '鎖不好，當場知道是哪一顆', see: '整面變紅寫出實際扭力，紅點就是那一顆。', act: '原地重鎖；合格後紅點變綠才往下。' } },
-  { key: 'tray', label: '承盤卡住', id: 'automation', t: 55, old: '工具仍能轉，以為承盤降了就開始鎖',
-    use: { title: '不是自己的錯，也看得出來', see: '「承盤下降逾時」→ 不用處理，等班長復歸。', act: '照常等待，班長收到通知到場。' } },
-  { key: 'fault', label: '工具故障', id: 'tool', t: 9, old: '停了也沒紀錄，不知道這顆有沒有鎖到位' },
-  { key: 'done', label: '本車完成', id: 'normal', t: 60, old: '沒有完成確認',
-    use: { title: '鎖完確認，安心放手', see: '「本車完成」，每顆都是綠點。', act: '放回工具，等下一台。' } },
+  { key: 'ready', label: '可鎖附', id: 'normal', t: 2.0, old: '隨時可轉', look: ['#3ccf6b', 'check', '可鎖附'],
+    use: { title: '該鎖哪一顆', act: '白框標出下一顆' } },
+  { key: 'running', label: '鎖附中', id: 'normal', t: 3.5, old: '鎖附中，不回報扭力', oldRun: true, look: ['#4ea8ff', 'spin', '鎖附中'] },
+  { key: 'warn', label: '即將超時', id: 'timeout', t: 12, old: '沒有倒數', look: ['#f0b545', 'clock', '即將超時'],
+    use: { title: '還剩多少時間', act: '倒數變黃' } },
+  { key: 'wait', label: '等承盤', id: 'normal', t: 15, old: '仍然能轉', look: ['#f0b545', 'lock', '已鎖定・等承盤'] },
+  { key: 'early', label: '提前鎖附', id: 'early', t: 15, old: '工具照轉，提前鎖上', oldRun: true, look: ['#e0303a', 'stop', '提前鎖附・已攔下', true],
+    use: { title: '為什麼被攔下', act: '放開扳機，等承盤' } },
+  { key: 'ng', label: '扭力不足', id: 'ng', t: 4.8, old: '沒有量測', look: ['#ff3b4f', 'x', '扭力不足・重鎖', true],
+    use: { title: '哪一顆沒鎖好', act: '原地重鎖' } },
+  { key: 'tray', label: '承盤卡住', id: 'automation', t: 36, old: '工具仍能轉', look: ['#b07cff', 'gear', '承盤卡住・等班長'],
+    use: { title: '不是自己的錯', act: '等班長復歸' } },
+  { key: 'fault', label: '工具故障', id: 'tool', t: 4.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '工具故障・已鎖住', true] },
+  { key: 'done', label: '本車完成', id: 'normal', t: 36, old: '沒有完成確認', look: ['#3ccf6b', 'check', '本車完成'],
+    use: { title: '鎖完確認', act: '每顆都是綠點' } },
 ];
+const ICON = {
+  check: '<path d="M4 12l5 5L20 6"/>',
+  spin: '<path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>',
+  clock: '<circle cx="12" cy="13" r="9"/><path d="M12 8v5l3 2"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  stop: '<path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z"/><path d="M8 12h8"/>',
+  x: '<circle cx="12" cy="12" r="10"/><path d="M8 8l8 8M16 8l-8 8"/>',
+  gear: '<circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  free: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5"/>',
+};
+const icon = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
 
 function demoAt(d, spec) {
   const run = createRun(scenarioById(d.id), { encoder: true, spec, vin: 'TWPA2026E00000001', epoch: Date.parse('2026-10-24T08:00:00+08:00') });
@@ -101,6 +112,20 @@ export function createProductView(deps) {
     iot: createSmartArm({ side: 'L', labels: true, mount: false }),
   };
   const rails = { old: makeRail(), iot: makeRail() };
+  // 工具上方原本的文字標籤由狀態徽章取代
+  for (const k of ['old', 'iot']) arms[k].tags.forEach((t) => t.element.classList.contains('tag-tool') && t.element.classList.add('hidden-tag'));
+  // 狀態外觀：工具外圍光暈＋工具上方的狀態標籤，讓每個狀態一眼分得出來
+  const looks = {};
+  for (const k of ['old', 'iot']) {
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16),
+      new THREE.MeshBasicMaterial({ color: 0x3ccf6b, transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const el = document.createElement('div');
+    el.className = 'arm-badge';
+    const badge = new CSS2DObject(el);
+    badge.center.set(0.5, 0); // 掛在套筒下方，不擋手臂螢幕
+    scene.add(halo, badge);
+    looks[k] = { halo, el, badge, blink: false };
+  }
   scene.add(arms.old, arms.iot);
   const titles = {};
   for (const [k, text] of [['old', '舊款・現有手臂'], ['iot', '新款・IoT 改良手臂']]) {
@@ -205,6 +230,8 @@ export function createProductView(deps) {
     const xs = both ? { old: -0.75, iot: 0.95 } : { old: 0.3, iot: 0.3 };
     for (const k of ['old', 'iot']) {
       arms[k].tags.forEach((t) => (t.visible = arms[k].visible)); // CSS2D 標籤不會跟著父物件隱藏
+      looks[k].badge.visible = arms[k].visible;
+      looks[k].halo.visible = arms[k].visible;
       if (isPlant && k === 'iot') arms[k].position.copy(mount);
       else arms[k].position.set(xs[k], HANG_Y, 0);
       rails[k].position.x = xs[k];
@@ -237,13 +264,44 @@ export function createProductView(deps) {
     }
     document.querySelectorAll('[data-demo]').forEach((b) => b.classList.toggle('on', b.dataset.demo === d.key));
     const a = state.alarm && state.alarm.level !== 'info' ? state.alarm : null;
-    $('#demo-iot').innerHTML = `<b>新款</b>工具${esc(stateLabel(state))}${a ? `，廣播「${esc(a.say || a.text)}」` : ''}`;
+    const [color, ic, text, blink] = d.look;
+    const label = d.key === 'warn' && state.remaining != null ? `剩 ${Math.ceil(state.remaining)} 秒` : text;
+    setLook('iot', color, ic, label, blink);
+    setLook('old', '#8b98ad', d.oldRun ? 'spin' : 'free', d.oldRun ? '鎖附中' : '隨時可轉', false);
+    const sb = $('#status-badge');
+    sb.hidden = st.mode === 'old';
+    sb.style.setProperty('--c', color);
+    sb.classList.toggle('blink', !!blink);
+    sb.innerHTML = `${icon(ic)}<b>${esc(label)}</b>${a ? `<span>「${esc(a.say || a.text)}」</span>` : ''}`;
+    $('#demo-iot').innerHTML = `<b>新款</b>${esc(label)}`;
     $('#demo-old').innerHTML = `<b>舊款</b>${esc(d.old)}`;
     drawScreens();
     if (sayIt && a?.say) speak(a.say, true);
+    if (sayIt && (st.mode === 'iot' || st.mode === 'plant')) focusStatus();
   }
-  const stateLabel = (s) => ({ ENABLED: '可鎖附', RUNNING: '鎖附中', FAULT: '故障・已鎖定' }[s.tool]
-    ?? { WAIT_TRAY: '已鎖定・等承盤', DONE: '完成・已鎖定', WRONG_ZONE: '已鎖定・位置不對', NO_VEHICLE: '待機' }[s.lockReason] ?? '已鎖定');
+  function setLook(k, color, ic, label, blink) {
+    const L = looks[k];
+    L.halo.material.color.set(color);
+    L.blink = !!blink;
+    L.el.style.setProperty('--c', color);
+    L.el.innerHTML = `${icon(ic)}<span>${esc(label)}</span>`;
+  }
+  // 狀態特寫：工具、握把燈與手臂螢幕同時入鏡
+  function focusStatus() {
+    arms.iot.updateMatrixWorld(true);
+    const scr = arms.iot.getPartFocus('screen').target;
+    const tip = arms.iot.getToolTip(new THREE.Vector3());
+    const tgt = scr.clone().lerp(tip, 0.5);
+    stopSpin();
+    st.focused = 'status';
+    $('#product-back').hidden = false;
+    flyTo(tgt.clone().add(new THREE.Vector3(1.25, 0.35, 1.05)), tgt);
+  }
+  // 狀態特寫的鏡頭中心：手臂螢幕與套筒的中點（工具移動時跟著走）
+  function statusCenter() {
+    const scr = arms.iot.getPartFocus('screen').target;
+    return scr.lerp(arms.iot.getToolTip(new THREE.Vector3()), 0.5);
+  }
 
   function drawScreens() {
     if (!current) return;
@@ -255,29 +313,22 @@ export function createProductView(deps) {
   }
 
   // ── 右側說明 ────────────────────────────────
-  function specRows(keys = []) {
-    return keys.map((k) => P[k]).filter(Boolean).map((it) => `<dt>${esc(it.label)}</dt><dd>${esc(it.v)}${it.unit ? ` ${esc(it.unit)}` : ''}<span class="chip chip-${it.status}">${STATUS[it.status]}</span></dd>`).join('');
-  }
   function renderFeature() {
     const k = st.part;
     const p = ARM_PARTS.find((x) => x.key === k);
     if (!p) {
       const b = BASE[k];
       $('#feature-detail').innerHTML = `
-        <div class="feature-head"><span class="fnum base">沿用</span><div><h3>${esc(b.title)}</h3>
-          <p class="muted small">工廠原有部件，新舊款相同</p></div></div>
-        <div class="feature-vs"><div><p>${esc(b.text)}</p></div></div>`;
+        <div class="feature-head"><span class="fnum base">沿用</span><h3>${esc(b.title)}</h3></div>
+        <p class="feature-one">${esc(b.text)}</p>`;
     } else {
       $('#feature-detail').innerHTML = `
-        <div class="feature-head"><span class="fnum">${NUM[p.n]}</span><div><h3>${esc(p.title)}</h3>
-          <div class="pchips">${p.principles.map((n) => `<span class="pchip p${n}">原則${'一二三'[n - 1]}・${PRINCIPLES[n].short}</span>`).join('')}</div></div></div>
-        ${k === 'screen' ? '<div class="mini-screen"><canvas id="pd-mini" width="480" height="320" aria-label="手臂螢幕目前畫面"></canvas><a href="#pd-screen" class="link" data-scroll="pd-screen">看手臂螢幕對師傅的作用</a></div>' : ''}
+        <div class="feature-head"><span class="fnum">${NUM[p.n]}</span><h3>${esc(p.title)}</h3></div>
+        ${k === 'screen' ? '<div class="mini-screen"><canvas id="pd-mini" width="480" height="320" aria-label="手臂螢幕目前畫面"></canvas></div>' : ''}
         <div class="feature-vs">
-          <div class="vs-old"><i>舊款</i><p>${esc(p.before)}</p></div>
-          <div class="vs-new"><i>新款</i><p>${esc(p.what)}</p></div>
-        </div>
-        ${p.spec?.length ? `<dl class="feature-spec">${specRows(p.spec)}</dl>` : ''}
-        <dl class="feature-more"><dt>為什麼這樣設計</dt><dd>${esc(p.why)}</dd><dt>故障時</dt><dd>${esc(p.fault)}</dd></dl>`;
+          <p class="vs-new"><i>新款</i>${esc(p.short)}</p>
+          <p class="vs-old"><i>舊款</i>${esc(p.beforeShort)}</p>
+        </div>`;
     }
     document.querySelectorAll('[data-feature]').forEach((b) => b.classList.toggle('on', b.dataset.feature === k));
     arms.iot.highlight($('#product-new').checked ? NEW_KEYS : k);
@@ -288,14 +339,6 @@ export function createProductView(deps) {
     renderFeature();
     if (zoom) focusPart(k);
   }
-  // 「看手臂螢幕的作用」：捲到下方區塊，不改網址 hash（hash 用來切換頁面）
-  $('#feature-detail').addEventListener('click', (e) => {
-    const a = e.target.closest('[data-scroll]');
-    if (!a) return;
-    e.preventDefault();
-    document.getElementById(a.dataset.scroll)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
   // 點 3D 部件
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -316,7 +359,7 @@ export function createProductView(deps) {
   }
 
   // ── 控制 ─────────────────────────────────
-  $('#feature-list').innerHTML = ARM_PARTS.map((p) => `<button type="button" data-feature="${p.key}"><span>${NUM[p.n]}</span>${esc(p.title)}</button>`).join('');
+  $('#feature-list').innerHTML = ARM_PARTS.map((p) => `<button type="button" data-feature="${p.key}"><span>${NUM[p.n]}</span>${esc(p.tag)}</button>`).join('');
   $('#feature-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-feature]');
     if (b) selectPart(b.dataset.feature);
@@ -336,9 +379,9 @@ export function createProductView(deps) {
 
   // 手臂螢幕區塊：作用清單（點了切到那個時刻）
   $('#pd-uses').innerHTML = DEMOS.filter((d) => d.use).map((d, i) => `
-    <button type="button" data-use="${d.key}">
+    <button type="button" data-use="${d.key}" style="--c:${d.look[0]}">
       <span class="n">${i + 1}</span>
-      <span class="u"><b>${esc(d.use.title)}</b><span>${esc(d.use.see)}</span><em>${esc(d.use.act)}</em></span>
+      <span class="u"><b>${esc(d.use.title)}</b><em>${esc(d.use.act)}</em></span>
     </button>`).join('');
   $('#pd-uses').addEventListener('click', (e) => {
     const b = e.target.closest('[data-use]');
@@ -353,14 +396,6 @@ export function createProductView(deps) {
     if (document.fullscreenElement) document.exitFullscreen?.();
     else el.requestFullscreen?.().catch(() => {});
   });
-  $('#pd-screen-spec').innerHTML = specRows(['screenSize', 'screenBrightness', 'screenRating', 'screenDistance', 'screenMount']);
-
-  // 新舊對照表與尺寸
-  $('#product-table').innerHTML = `<thead><tr><th>功能</th><th>舊款（現有手臂）</th><th>新款（IoT 改良）</th></tr></thead><tbody>${
-    ARM_PARTS.map((p) => `<tr><th>${NUM[p.n]} ${esc(p.title)}</th><td data-label="舊款">${esc(p.before)}</td><td data-label="新款">${esc(p.what)}</td></tr>`).join('')
-  }<tr><th>每顆螺絲履歷</th><td data-label="舊款">沒有紀錄，客訴時查不到是哪一顆。</td><td data-label="新款">每顆的扭力、角度、時間、結果與錯誤分類都留下來，可篩選、匯出。</td></tr></tbody>`;
-  $('#product-spec').innerHTML = specRows(['link1', 'link2', 'columnDrop', 'tubeLength', 'toolLength', 'railY']);
-
   function resize() {
     const w = host.clientWidth;
     const h = host.clientHeight;
@@ -373,7 +408,6 @@ export function createProductView(deps) {
   new ResizeObserver(resize).observe(host);
 
   const IDLE_R = { alarm: null, bolts: {} };
-  const BOLT = { PENDING: 0x4a5568, OK: 0x3ccf6b, NG: 0xe0303a };
   function frame(dt, time) {
     if (tween) {
       tween.t = Math.min(1, tween.t + dt * 1.4);
@@ -385,11 +419,20 @@ export function createProductView(deps) {
     controls.update();
     arms.old.update(dt, time);
     arms.iot.update(dt, time);
+    for (const k of ['old', 'iot']) {
+      const L = looks[k];
+      const tip = arms[k].getToolTip(new THREE.Vector3());
+      L.halo.position.copy(tip).add(new THREE.Vector3(0, 0.18, 0));
+      L.badge.position.copy(tip).add(new THREE.Vector3(0, -0.06, 0));
+      const pulse = L.blink ? (Math.sin(time * 9) > 0 ? 0.42 : 0.08) : 0.2 + 0.08 * Math.sin(time * 3);
+      L.halo.material.opacity = k === 'old' ? 0.08 : pulse;
+      L.halo.scale.setScalar(1 + (L.blink ? 0.15 * Math.sin(time * 9) : 0.05 * Math.sin(time * 3)));
+    }
     // 放大中且部件在動（例如工具移到另一顆螺絲）時，鏡頭跟著部件
     if (st.focused && !tween) {
-      const f = arms.iot.getPartFocus(st.focused);
+      const f = st.focused === 'status' ? { target: statusCenter() } : arms.iot.getPartFocus(st.focused);
       if (f && f.target.distanceTo(controls.target) > 0.002) {
-        const delta = f.target.clone().sub(controls.target);
+        const delta = f.target.clone().sub(controls.target).multiplyScalar(Math.min(1, dt * 4));
         controls.target.add(delta);
         camera.position.add(delta);
       }
@@ -397,13 +440,7 @@ export function createProductView(deps) {
     if (st.mode === 'plant' && plant && current) {
       plant.env.tray.position.y = -P.trayDrop.v * current.trayPos;
       const s = current.state;
-      for (const id of SEQUENCE.L) {
-        s.bolts[id].forEach((b, i) => {
-          const m = plant.env.bolts[id][i].material;
-          m.color.setHex(BOLT[b]);
-          m.emissive.setHex(b === 'PENDING' ? 0 : BOLT[b]);
-        });
-      }
+      plant.env.paintBolts({ L: s }, time);
       plant.op.update(dt, time, {
         mode: current.target ? 'work' : 'wait',
         grip: current.target ? arms.iot.getGrip() : null,
@@ -422,5 +459,6 @@ export function createProductView(deps) {
     frame,
     resize,
     refresh() { demoCache = new Map(); applyDemo(false); },
+    debug: { camera, controls, arms },
   };
 }
