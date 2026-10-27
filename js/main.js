@@ -465,10 +465,10 @@ const GROUP_OF = { station: 'station', product: 'arm', arm: 'arm', settings: 'ar
 let stationView = null;
 let sim = null;
 let productView = null;
-let viewNow = 'product';
+let viewNow = 'station';
 function go(v, { push = true } = {}) {
   const toScreen = v === 'screen'; // 舊的「手臂螢幕」頁已併入手臂介紹
-  if (!VIEWS.includes(v)) v = 'product';
+  if (!VIEWS.includes(v)) v = toScreen ? 'product' : 'station';
   viewNow = v;
   document.body.dataset.view = v;
   $$('main > .view').forEach((s) => (s.hidden = s.dataset.view !== v));
@@ -877,6 +877,6 @@ arms.L.setLabelsVisible($('#opt-labels').checked);
 renderTraceSelects();
 goPreset('orbit', true);
 load(ui.scenarioId);
-go(location.hash.slice(1) || 'product', { push: false }); // 預設打開手臂介紹
+go(location.hash.slice(1) || 'station', { push: false }); // 預設打開廠房情境
 navEnd();
 requestAnimationFrame(frame);
