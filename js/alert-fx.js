@@ -1,12 +1,12 @@
 // 3D 示警效果（UI 層）：讓七種情境在畫面上一眼就分得出來。
 // 每一種警示有自己的顏色、圖示、標記形狀與指向的位置：
-//   提前鎖附    紅   ⛔  上方那顆螺絲打叉＋承盤框黃閃「承盤未降」
-//   順序錯誤    洋紅 ⇄   錯的區域打叉、對的那顆綠圈，中間拉一條箭頭
+//   降前鎖附    紅   ⛔  上方那顆螺絲打叉＋承盤框黃閃「承盤未降」
+//   錯誤步驟    洋紅 ⇄   錯的區域打叉、對的那顆綠圈，中間拉一條箭頭
 //   扭力不足    紅   ✕   NG 那顆快速脈動，標籤寫實際扭力與下限
 //   即將超時    黃   ⏱   下一顆外圍倒數圈
 //   超過時間    橘紅 ⏱   同上，圈變滿紅
-//   自動化錯誤  紫   ⚙   承盤整個框起來閃紫，標示「不是師傅的錯」
-//   工具錯誤    橘   ⚡   工具外圍光暈
+//   承盤異常    紫   ⚙   承盤整個框起來閃紫，標示「不是師傅的錯」
+//   訊號中斷    橘   ⚡   工具外圍光暈
 //   正常        綠   ✓   每鎖好一顆冒出綠勾與扭力值，完成時「本車完成」
 //
 //   const fx = createAlertFx(scene);
@@ -30,13 +30,13 @@ const ICON = {
 const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
 
 export const FX = {
-  EARLY_ATTEMPT: { mood: 'operation', color: 0xe0303a, icon: 'stop', title: '提前鎖附' },
-  SEQUENCE_ERROR: { mood: 'sequence', color: 0xff4fd8, icon: 'swap', title: '順序錯誤' },
+  EARLY_ATTEMPT: { mood: 'operation', color: 0xe0303a, icon: 'stop', title: '降前鎖附' },
+  SEQUENCE_ERROR: { mood: 'sequence', color: 0xff4fd8, icon: 'swap', title: '錯誤步驟' },
   TIGHTEN_NG: { mood: 'operation', color: 0xff3b4f, icon: 'x', title: '扭力不足' },
   PHASE_WARNING: { mood: 'warn', color: 0xf0b545, icon: 'clock', title: '即將超時' },
   TIMEOUT: { mood: 'timeout', color: 0xff7a1a, icon: 'clock', title: '超過鎖附時間' },
-  AUTOMATION_FAULT: { mood: 'automation', color: 0xb07cff, icon: 'gear', title: '自動化錯誤' },
-  TOOL_FAULT: { mood: 'tool', color: 0xff8a3d, icon: 'bolt', title: '工具錯誤' },
+  AUTOMATION_FAULT: { mood: 'automation', color: 0xb07cff, icon: 'gear', title: '承盤異常' },
+  TOOL_FAULT: { mood: 'tool', color: 0xff8a3d, icon: 'bolt', title: '扭矩槍訊號中斷' },
 };
 const MOOD_RANK = { '': 0, ok: 1, warn: 2, timeout: 3, sequence: 4, operation: 4, tool: 5, automation: 5 };
 
@@ -87,7 +87,7 @@ export function createAlertFx(scene) {
   }
   const sets = { L: makeSet(), R: makeSet() };
 
-  // 承盤外框（提前鎖附：黃「承盤未降」；自動化錯誤：紫）
+  // 承盤外框（降前鎖附：黃「承盤未降」；承盤異常：紫）
   const trayBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), additive(0xb07cff, 0.18));
   const trayEdges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0xb07cff, transparent: true }));
   trayBox.add(trayEdges);
@@ -217,7 +217,7 @@ export function createAlertFx(scene) {
           S.cross.visible = true;
           S.cross.position.copy(p).add(_v.set(0, 0.05, 0));
           S.cross.children.forEach((c) => c.material.color.setHex(fx.color));
-          label(p, '提前鎖附・工具已鎖住', '承盤還沒降，放開扳機');
+          label(p, '降前鎖附・工具已鎖住', '承盤還沒降，放開扳機');
           trayMode = 'early';
           break;
         }
@@ -236,7 +236,7 @@ export function createAlertFx(scene) {
             S.target.scale.setScalar(1 + 0.3 * Math.sin(time * 5));
             setArrow(S, wrong, right, 0x3ccf6b);
           }
-          label(wrong, '順序錯誤', s.expected ? `先鎖${zoneById(s.expected.zoneId).label}（綠圈）` : '');
+          label(wrong, '錯誤步驟', s.expected ? `先鎖${zoneById(s.expected.zoneId).label}（綠圈）` : '');
           break;
         }
         case 'TIGHTEN_NG': {
@@ -273,7 +273,7 @@ export function createAlertFx(scene) {
           S.halo.material.color.setHex(fx.color);
           S.halo.scale.setScalar(1 + 0.2 * Math.sin(time * 9));
           S.halo.material.opacity = Math.sin(time * 9) > 0 ? 0.32 : 0.12;
-          label(p, '工具錯誤・已鎖住', '通訊中斷，通知班長', 0.35);
+          label(p, '扭矩槍訊號中斷・已鎖住', '通知班長', 0.35);
           break;
         }
         default:
@@ -295,7 +295,7 @@ export function createAlertFx(scene) {
       trayBox.visible = true;
       trayLabel.obj.position.copy(trayBox.position).add(_v.set(0, 0.35, 0.6));
       if (trayMode === 'automation') {
-        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '承盤卡住・自動化錯誤', '不是師傅的錯，等班長復歸'), 'fx-automation');
+        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '系統異常 A：承盤異常', '不是師傅的錯，等班長復歸'), 'fx-automation');
       } else {
         setLabel(trayLabel, labelHtml({ icon: 'stop' }, '承盤未下降', '上方螺絲不開放'), 'fx-warn');
       }

@@ -24,7 +24,7 @@ export const PRINCIPLES = {
 // 改良點（點部件時顯示；UI 的改良點清單與 README 都依這份）
 export const ARM_PARTS = [
   {
-    key: 'enable', n: 1, title: '工具內建致能／鎖定', tag: '致能鎖定', principles: [1, 2],
+    key: 'enable', n: 1, title: '工具內建智能鎖定', tag: '智能鎖定', principles: [1, 2],
     short: '承盤沒降，工具不轉', beforeShort: '工具隨時能轉',
     spec: ['controllerPsets', 'toolTorqueRange'],
     before: '工具隨時都能轉，靠師傅自己記得等承盤。',
@@ -39,7 +39,7 @@ export const ARM_PARTS = [
     before: '不回報扭力與角度，鎖得好不好沒人知道。',
     what: '工具內建扭力感測器與角度編碼器，每顆螺絲回報扭力與角度，控制器當場判 OK／NG。NG 不計數，要原地重鎖。',
     why: '「有沒有鎖緊」由工具量測，不用另外抽檢；每顆都留下履歷。',
-    fault: '感測器自我檢查失敗 → 記為工具錯誤，工具鎖住並通知班長。',
+    fault: '感測器自我檢查失敗 → 記為系統異常 B，工具鎖住並通知班長。',
   },
   {
     key: 'ring', n: 3, title: '握把 LED 環＋震動', tag: 'LED 環', principles: [1],
@@ -55,7 +55,7 @@ export const ARM_PARTS = [
     short: '語音廣播＋三色燈', beforeShort: '沒有聲音、燈號',
     spec: ['speakerLevel'],
     before: '沒有語音、沒有工位燈號。',
-    what: '控制器固定在軌道吊架上，不在工具上，不會晃。喇叭播「提前鎖附！提前鎖附！」等語音，三色燈同步工位狀態。',
+    what: '控制器固定在軌道吊架上，不在工具上，不會晃。喇叭播「降前鎖附！降前鎖附！」等語音，三色燈同步工位狀態。',
     why: '師傅等待時不一定看前方，所以以聲音為主、燈號為輔；要看細節時再看手臂螢幕。',
     fault: '每班開工自動自我檢查（燈號＋試播語音），異常即通知維護。',
   },
@@ -73,9 +73,9 @@ export const ARM_PARTS = [
     short: '直接讀承盤訊號', beforeShort: '和承盤沒有連線',
     spec: ['plcSignals', 'trayFaultTimeout'],
     before: '工具和承盤沒有連線，各做各的。',
-    what: '控制器接承盤的「開始下降」「下降完成」數位訊號。承盤開始下降 8 秒內沒收到「下降完成」，判自動化錯誤。',
+    what: '控制器接承盤的「開始下降」「下降完成」數位訊號。承盤開始下降 8 秒內沒收到「下降完成」，判系統異常 A：承盤異常。',
     why: '直接用設備本身的訊號判斷時機，不靠師傅或攝影機推測。',
-    fault: '訊號遺失 → 步驟 3 維持鎖定並通知班長，紀錄歸在自動化錯誤。',
+    fault: '訊號遺失 → 步驟 3 維持鎖定並通知班長，紀錄歸在系統異常 A：承盤異常。',
   },
   {
     key: 'key', n: 7, title: '班長鑰匙開關（降級模式）', tag: '鑰匙開關', principles: [3],
@@ -393,7 +393,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   ring.rotation.x = Math.PI / 2;
   ring.position.y = 0.198;
   tool.add(tagPart(ring, 'ring'));
-  const toolTag = addTag(tool, `工具 ${side}`, 'tag-tool', 0, toolLen + 0.08, 0);
+  const toolTag = addTag(tool, `機器手臂 ${side}`, 'tag-tool', 0, toolLen + 0.08, 0);
   numTag(display, 'screen', 0, 0.12, 0);
   numTag(tool, 'torque', -s * 0.11, 0.17, 0);
   numTag(tool, 'ring', -s * 0.11, 0.245, 0);
@@ -476,7 +476,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   function setState(state) {
     if (legacy) {
       running = state.tool === 'RUNNING';
-      toolTag.textContent = `現行工具 ${side}・${running ? '鎖附中' : '隨時可轉'}`;
+      toolTag.textContent = `現行機器手臂 ${side}・${running ? '鎖附中' : '隨時可轉'}`;
       return;
     }
     sig = signalsFor(state);
@@ -488,7 +488,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
       if (next) toolTag.classList.add(next);
       tone = next;
     }
-    toolTag.textContent = `工具 ${side}・${sig.label}`;
+    toolTag.textContent = `機器手臂 ${side}・${sig.label}`;
   }
 
   // 螢幕內容由 drawArmScreen 繪製；狀態沒變就不重畫

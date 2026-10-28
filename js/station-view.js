@@ -209,12 +209,13 @@ export function createStationView(deps) {
   const slider = $('#st-slider');
   slider.max = T.window;
   const track = $('#st-track');
-  for (const [a, b, tone, txt] of [[T.p1Start, T.p1End, 'orange', '1 下方螺絲'], [T.checkpoint, T.trayEnd, 'yellow', '2'], [T.p2Start, T.p2End, 'teal', '3 上方螺絲']]) {
+  for (const [a, b, tone, txt] of [[T.p1Start, T.p1End, 'orange', '1 下方螺絲'], [T.checkpoint, T.trayEnd, 'yellow', '2 承盤下降'], [T.p2Start, T.p2End, 'teal', '3 上方螺絲']]) {
     const s = document.createElement('span');
     s.className = `tseg tseg-${tone}`;
     s.style.left = `${(a / T.window) * 100}%`;
     s.style.width = `${((b - a) / T.window) * 100}%`;
-    s.textContent = txt;
+    const [n, ...words] = txt.split(' ');
+    s.innerHTML = `<em>${n}<span> ${words.join(' ')}</span></em>`;
     track.appendChild(s);
   }
   const cp = document.createElement('span');

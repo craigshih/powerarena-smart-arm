@@ -6,7 +6,7 @@
 //   tool:trigger  { zoneId? }                    師傅按下扳機
 //   tool:torque   { torqueNm, angleDeg }         工具回報這一顆的扭力與角度
 //   tray:lowering / tray:lowered                 承盤 PLC 訊號
-//   tool:fault    { code }  /  tool:recover      工具故障與恢復
+//   tool:fault    { code }  /  tool:recover      扭矩槍訊號中斷等工具異常與恢復
 //   bypass:on / bypass:off                       班長鑰匙開關（降級模式）
 //   timer                                        定時檢查（超時、承盤逾時）
 //
@@ -16,8 +16,8 @@
 import { P, SEQUENCE, SPEC, zoneById } from './arm-params.js';
 
 export const CATEGORY = {
-  AUTOMATION: '自動化錯誤',
-  TOOL: '工具錯誤',
+  AUTOMATION: '系統異常 A：承盤異常',
+  TOOL: '系統異常 B：扭矩槍訊號中斷',
   OPERATION: '作業異常',
 };
 
@@ -28,16 +28,16 @@ export const EVENT_TYPES = {
   TOOL_LOCKED: { label: '工具鎖定', result: 'INFO', category: '' },
   TIGHTEN_OK: { label: '鎖附 OK', result: 'OK', category: '' },
   TIGHTEN_NG: { label: '鎖附 NG', result: 'NG', category: 'OPERATION' },
-  EARLY_ATTEMPT: { label: '提前鎖附（已攔下）', result: 'BLOCKED', category: 'OPERATION' },
-  SEQUENCE_ERROR: { label: '順序錯誤（已攔下）', result: 'BLOCKED', category: 'OPERATION' },
+  EARLY_ATTEMPT: { label: '降前鎖附（已攔下）', result: 'BLOCKED', category: 'OPERATION' },
+  SEQUENCE_ERROR: { label: '錯誤步驟（已攔下）', result: 'BLOCKED', category: 'OPERATION' },
   PHASE_WARNING: { label: '即將超時', result: 'WARN', category: '' },
   TIMEOUT: { label: '超過鎖附時間', result: 'NG', category: 'OPERATION' },
   PHASE_COMPLETE: { label: '階段完成', result: 'INFO', category: '' },
   TRAY_LOWERING: { label: '承盤開始下降', result: 'INFO', category: '' },
   TRAY_LOWERED: { label: '承盤下降完成', result: 'INFO', category: '' },
-  AUTOMATION_FAULT: { label: '自動化異常', result: 'FAULT', category: 'AUTOMATION' },
-  TOOL_FAULT: { label: '工具異常', result: 'FAULT', category: 'TOOL' },
-  TOOL_RECOVERED: { label: '工具恢復', result: 'INFO', category: '' },
+  AUTOMATION_FAULT: { label: '承盤異常', result: 'FAULT', category: 'AUTOMATION' },
+  TOOL_FAULT: { label: '扭矩槍訊號中斷', result: 'FAULT', category: 'TOOL' },
+  TOOL_RECOVERED: { label: '扭矩槍恢復', result: 'INFO', category: '' },
   BYPASS_ON: { label: '降級模式開啟', result: 'WARN', category: '' },
   BYPASS_OFF: { label: '降級模式關閉', result: 'INFO', category: '' },
   CYCLE_COMPLETE: { label: '本車完成', result: 'OK', category: '' },
@@ -46,7 +46,7 @@ export const EVENT_TYPES = {
 export const RESULT_LABEL = { OK: 'OK', NG: 'NG', BLOCKED: '已攔下', WARN: '警告', FAULT: '故障', INFO: '資訊' };
 
 export const FAULT_TEXT = {
-  COMM_LOST: '工具與控制器通訊中斷',
+  COMM_LOST: '扭矩槍與控制器訊號中斷',
   BATTERY_LOW: '電池電量不足',
   TRANSDUCER: '扭力感測器異常',
   TRAY_STUCK: '承盤下降逾時',
@@ -226,7 +226,7 @@ export function createArmLogic(options = {}) {
     alarm('AUTOMATION_FAULT', 'fault', `${FAULT_TEXT[code]}，步驟 3 暫停`, '承盤未下降，請通知班長');
   }
 
-  // ── 工具狀態（含致能／鎖定紀錄）────────────
+  // ── 工具狀態（含智能鎖定的致能／鎖定紀錄）────────────
   function refreshTool() {
     const prev = { tool: s.tool, reason: s.lockReason };
     let tool = 'ENABLED';
@@ -273,13 +273,13 @@ export function createArmLogic(options = {}) {
       const zone = zoneId ? zoneById(zoneId) : null;
       if (zone && zone.side !== s.side) return;
 
-      // 下方螺絲還沒鎖就跑去鎖上方：順序錯誤（需要編碼器才知道工具在哪個孔位）
+      // 下方螺絲還沒鎖就跑去鎖上方：錯誤步驟（需要編碼器才知道工具在哪個孔位）
       const skippedA = zone && zone.phase === 'C' && s.phase === 'A' && !phaseDone('A');
-      // 下方鎖完、承盤還沒降下來就要鎖上方：提前鎖附，控制器不讓工具轉
+      // 下方鎖完、承盤還沒降下來就要鎖上方：降前鎖附，控制器不讓工具轉
       if (!skippedA && (s.phase === 'B' || (zone && zone.phase === 'C' && !trayReady()))) {
         const target = zone ?? zoneById(nextBolt('C')?.zoneId ?? zonesOf('C')[0]);
         rec('EARLY_ATTEMPT', { zoneId: target.id, boltIndex: nextInZone(target.id) });
-        alarm('EARLY_ATTEMPT', 'alarm', '提前鎖附！承盤尚未下降', '提前鎖附！提前鎖附！', v('alarmHold'));
+        alarm('EARLY_ATTEMPT', 'alarm', '降前鎖附！承盤尚未下降', '降前鎖附！降前鎖附！', v('alarmHold'));
         return;
       }
 
@@ -288,7 +288,7 @@ export function createArmLogic(options = {}) {
       if (zone && zone.id !== exp.zoneId) {
         const want = zoneById(exp.zoneId).label;
         rec('SEQUENCE_ERROR', { zoneId: zone.id, boltIndex: nextInZone(zone.id) });
-        alarm('SEQUENCE_ERROR', 'alarm', `順序錯誤：請先鎖${want}`, `順序錯誤，請先鎖${want}`, v('alarmHold'));
+        alarm('SEQUENCE_ERROR', 'alarm', `錯誤步驟：請先鎖${want}`, `錯誤步驟，請先鎖${want}`, v('alarmHold'));
         return;
       }
       s.attempt = { ...exp };
@@ -353,7 +353,8 @@ export function createArmLogic(options = {}) {
       s.attempt = null;
       s.fault = e.code || 'COMM_LOST';
       rec('TOOL_FAULT', { zoneId: aborted?.zoneId ?? '', boltIndex: aborted?.boltIndex ?? null });
-      alarm('TOOL_FAULT', 'fault', `工具異常：${FAULT_TEXT[s.fault] ?? s.fault}`, '工具異常，請通知班長');
+      const comm = s.fault === 'COMM_LOST'; // 系統異常 B 專指扭矩槍訊號中斷，其他工具問題照舊叫工具異常
+      alarm('TOOL_FAULT', 'fault', `${comm ? '系統異常 B' : '工具異常'}：${FAULT_TEXT[s.fault] ?? s.fault}`, comm ? '扭矩槍訊號中斷，請通知班長' : '工具異常，請通知班長');
     },
 
     'tool:recover'() {
@@ -472,7 +473,7 @@ export function signalsFor(state) {
 
 // 手臂螢幕的大字步驟
 export function describe(state) {
-  const tray = { UP: '承盤撐起', LOWERING: '承盤下降中', DOWN: '承盤已下降', STUCK: '承盤卡住' }[state.tray];
+  const tray = { UP: '承盤撐起', LOWERING: '承盤下降中', DOWN: '承盤已下降', STUCK: '承盤異常' }[state.tray];
   switch (state.phase) {
     case 'IDLE': return { step: '—', title: '等待車輛進站', sub: '工具待機', tone: 'muted', tray };
     case 'A': return {

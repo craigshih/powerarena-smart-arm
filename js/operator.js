@@ -4,7 +4,7 @@
 //   const op = createOperator({ side: 'L' });
 //   scene.add(op);
 //   op.update(dt, time, { grip, top, look, mode, react });  // 每幀
-//   op.say('「提前鎖附！」', 'voice');                       // 頭上對話框
+//   op.say('「降前鎖附！」', 'voice');                       // 頭上對話框
 //
 // mode：'work'（雙手握工具）、'wait'（放下工具做別的事）。react：提示來源的世界座標（轉頭看）。
 

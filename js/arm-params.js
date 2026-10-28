@@ -42,7 +42,7 @@ export const P = {
   phaseLimit: p(90, 's', '單一階段鎖附時間上限', SRC.V2, 'derived', '取業主答 60–90 秒的上限'),
   phaseWarnLead: p(15, 's', '超時前預警', SRC.ASM, 'assumed'),
   checkpointLead: p(2, 's', '檢查點前完成緩衝', SRC.V1, 'confirmed', '實際秒數待技術人員確認'),
-  alarmHold: p(4, 's', '一次性警示的顯示時間', SRC.ASM, 'assumed', '提前鎖附、順序錯誤'),
+  alarmHold: p(4, 's', '一次性警示的顯示時間', SRC.ASM, 'assumed', '降前鎖附、錯誤步驟'),
 
   // ── 工具與感測 ────────────────────────────
   batteryLowPct: p(15, '%', '電池低電量門檻', SRC.ASM, 'assumed', '若採無線工具'),
@@ -87,7 +87,7 @@ export const SEQUENCE = {
 };
 export const SEQUENCE_STATUS = p('左下／右下 → 承盤下降 → 左上／右上', '', '鎖附順序', '場域模型（團隊現場紀錄）', 'confirmed');
 
-// 每個孔位的鎖附規格（扭力、容差、角度窗）。師傅設定頁只改這裡的值。
+// 每個孔位的鎖附規格（扭力、容差、角度窗）。鎖附參數設定頁只改這裡的值。
 const spec = (zone, torque, tol, angleMin, angleMax, pset) => ({
   torque: p(torque, 'N·m', `${zone} 目標扭力`, SRC.ASM, 'assumed'),
   tol: p(tol, '%', `${zone} 扭力容差 ±`, SRC.ASM, 'assumed'),

@@ -186,7 +186,7 @@ function setMuted(m) {
 $('#mute').addEventListener('click', () => { unlockAudio(); setMuted(!voice.muted); });
 setMuted(voice.muted);
 
-// ── 鎖附規格（師傅設定頁可改）──────────────────
+// ── 鎖附規格（鎖附參數設定頁可改）──────────────────
 const SPEC_KEYS = ['torque', 'tol', 'angleMin', 'angleMax'];
 function specFrom(values) {
   const out = {};
@@ -194,7 +194,7 @@ function specFrom(values) {
     out[id] = { ...sp };
     for (const k of SPEC_KEYS) {
       const v = values?.[id]?.[k];
-      if (Number.isFinite(v) && v !== sp[k].v) out[id][k] = { ...sp[k], v, src: '師傅設定頁' };
+      if (Number.isFinite(v) && v !== sp[k].v) out[id][k] = { ...sp[k], v, src: '鎖附參數設定頁' };
     }
   }
   return out;
@@ -450,7 +450,7 @@ function renderParams() {
   const row = (it) => `<tr><th>${esc(it.label)}${it.note ? `<small>${esc(it.note)}</small>` : ''}<small>${esc(it.src)}</small></th>
     <td class="num">${esc(it.v)}<i> ${esc(it.unit)}</i></td><td>${chip(it.status)}</td></tr>`;
   const groups = PARAM_GROUPS.map(([title, keys]) => `<h4>${title}</h4><table class="ptable">${keys.map((k) => row(P[k])).join('')}</table>`).join('');
-  const spec = `<h4>鎖附規格（師傅設定頁可改）</h4><table class="ptable">${ZONES.map((z) => {
+  const spec = `<h4>鎖附規格（鎖附參數設定頁可改）</h4><table class="ptable">${ZONES.map((z) => {
     const sp = currentSpec[z.id];
     return `<tr><th>${z.label}<small>${z.id} · ${z.bolts} 顆 · Pset ${sp.pset.v}</small></th>
       <td class="num">${sp.torque.v}<i> N·m ±${sp.tol.v}%</i><br>${sp.angleMin.v}–${sp.angleMax.v}<i>°</i></td><td>${chip('assumed')}</td></tr>`;
@@ -506,7 +506,7 @@ navScroll.addEventListener('scroll', navEnd, { passive: true });
 // 比較頁的情境連結
 $$('[data-play]').forEach((b) => b.addEventListener('click', () => { go('arm'); load(b.dataset.play, { autoplay: true }); }));
 
-// ── 師傅設定 ─────────────────────────────────
+// ── 鎖附參數設定 ─────────────────────────────────
 let draft = specValues(currentSpec);
 const FIELDS = [
   { k: 'torque', label: '目標扭力', unit: 'N·m', step: 1, min: 5, max: 400 },
@@ -562,7 +562,7 @@ $('#set-reset').addEventListener('click', () => {
   renderSettings();
 });
 
-// ── 事後追溯 ─────────────────────────────────
+// ── 異常事件追溯 ─────────────────────────────────
 let historyData = null;
 const trace = { mode: 'bolt', limit: 150 };
 const tsFmt = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -596,7 +596,7 @@ function boltRows(records) {
   }
   const list = [...rows.values()].filter((r) => r.result);
   for (const row of list) {
-    if (row.phase === 'C' && autoByVin.has(row.vin)) { row.cats.add('AUTOMATION'); row.notes.push('承盤逾時，等待復歸後鎖附'); }
+    if (row.phase === 'C' && autoByVin.has(row.vin)) { row.cats.add('AUTOMATION'); row.notes.push('承盤異常，等待復歸後鎖附'); }
     if (row.attempts > 1) row.notes.push(`重鎖 ${row.attempts - 1} 次`);
   }
   return list;
@@ -766,7 +766,7 @@ $('#f-pdf').addEventListener('click', async () => {
     }).join('');
     const now = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
     const report = `<div style="font-family:-apple-system,'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;color:#111;padding:4px">
-      <h1 style="font-size:18px;margin:0 0 4px">事後追溯報表｜${bolt ? '螺絲履歷' : '全部事件'}</h1>
+      <h1 style="font-size:18px;margin:0 0 4px">異常事件追溯報表｜${bolt ? '螺絲履歷' : '全部事件'}</h1>
       <p style="font-size:11px;color:#555;margin:0 0 10px">工位 ${P.station.v} · 篩選：${esc(filters)} · 共 ${rows.length} 筆${rows.length > used.length ? `（列出前 ${used.length} 筆）` : ''} · 匯出 ${now}${liveVins.size ? ' · ＊為本次播放' : ''}</p>
       <table style="width:100%;border-collapse:collapse;font-size:10px">
         <thead><tr>${head.map((h) => `<th style="text-align:left;padding:5px 6px;background:#f2f4f7;border-bottom:2px solid #bbb">${h}</th>`).join('')}</tr></thead>

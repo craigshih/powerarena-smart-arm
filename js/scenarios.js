@@ -84,7 +84,7 @@ function base(ctx, variant) {
   // 左側依情境變化
   variant(L, all, ctx);
 
-  // 承盤（自動化錯誤情境自行處理）
+  // 承盤（系統異常 A 承盤異常情境自行處理）
   if (!ctx.customTray) {
     all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
     all(TRAY_DUE + 4, { ev: { type: 'tray:lowered' } });
@@ -113,13 +113,13 @@ export const SCENARIOS = [
   },
   {
     id: 'early',
-    title: '提前鎖附',
+    title: '降前鎖附',
     short: '承盤沒降就鎖上方',
-    expect: '工具不轉、紅燈閃、廣播「提前鎖附！」',
+    expect: '工具不轉、紅燈閃、廣播「降前鎖附！」',
     build: (ctx) => base(ctx, (L) => {
       normalA(L);
       L.at(13).note('等承盤時，師傅順手想先鎖左上螺絲').move('Z2L', 0).trigger();
-      L.wait(1.4).note('聽到「提前鎖附！」，握把閃紅並震動；師傅放開扳機，放回工具').rest();
+      L.wait(1.4).note('聽到「降前鎖附！」，握把閃紅並震動；師傅放開扳機，放回工具').rest();
     }),
   },
   {
@@ -147,7 +147,7 @@ export const SCENARIOS = [
   },
   {
     id: 'sequence',
-    title: '順序錯誤',
+    title: '錯誤步驟',
     short: '先鎖上方、跳過下方',
     expect: '工具停在錯的孔位就鎖住，廣播「請先鎖左下」。',
     needsEncoder: true,
@@ -163,7 +163,7 @@ export const SCENARIOS = [
         L.at(1.5).note('師傅憑習慣先去鎖左上螺絲').move('Z2L', 0);
         if (ctx.encoder) {
           L.trigger().torque('Z2L');
-          L.wait(0.4).note('工具不轉、握把黃燈閃；廣播「順序錯誤，請先鎖左下螺絲」，師傅改鎖左下');
+          L.wait(0.4).note('工具不轉、握把黃燈閃；廣播「錯誤步驟，請先鎖左下螺絲」，師傅改鎖左下');
           L.wait(0.2).bolt('Z1L', 0).rest();
         } else {
           L.trigger().torque('Z1L');
@@ -175,9 +175,9 @@ export const SCENARIOS = [
   },
   {
     id: 'automation',
-    title: '自動化錯誤',
+    title: '系統異常 A：承盤異常',
     short: '承盤下降到一半卡住',
-    expect: '判自動化錯誤，上方不開放，通知班長。',
+    expect: '判承盤異常，上方不開放，通知班長。',
     build: (ctx) => {
       ctx.customTray = true;
       ctx.cStart = TRAY_DUE + 17.5;
@@ -185,7 +185,7 @@ export const SCENARIOS = [
         normalA(L).note('左下完成，工具已鎖定，等承盤');
         all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
         all(TRAY_DUE + 2, { trayStop: true });
-        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「自動化錯誤」。師傅照常等待；班長收到通知到場' });
+        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常 A：承盤異常」。師傅照常等待；班長收到通知到場' });
         all(TRAY_DUE + 14, { note: '班長確認承盤卡住，按下承盤復歸' });
         all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
         all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
@@ -194,8 +194,8 @@ export const SCENARIOS = [
   },
   {
     id: 'tool',
-    title: '工具錯誤',
-    short: '鎖附中通訊中斷',
+    title: '系統異常 B：扭矩槍訊號中斷',
+    short: '鎖附中扭矩槍訊號中斷',
     expect: '立刻停轉鎖住，恢復後重鎖這一顆。',
     build: (ctx) => base(ctx, (L) => {
       L.at(1.5).move('Z1L', 0).trigger();

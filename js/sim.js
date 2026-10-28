@@ -20,7 +20,7 @@ const LEGACY_TEXT = {
   SEQUENCE_ERROR: '先鎖上方也鎖得下去，沒有人知道',
   PHASE_WARNING: '沒有倒數提醒',
   TIMEOUT: '沒有人知道已經超時，事後也查不到',
-  AUTOMATION_FAULT: '承盤卡住，但工具仍然能轉；以為承盤降了就開始鎖，等於提前鎖附',
+  AUTOMATION_FAULT: '承盤卡住，但工具仍然能轉；以為承盤降了就開始鎖，等於降前鎖附',
   TOOL_FAULT: '工具停了，這一顆有沒有鎖到位沒有紀錄',
 };
 
@@ -133,8 +133,8 @@ export function createSim(deps) {
   }
 
   // 章節按鈕：開始、每種警示的前一刻、承盤下降、鎖上方、完成
-  const ALERT_LABEL = { EARLY_ATTEMPT: '提前鎖附', SEQUENCE_ERROR: '順序錯誤', TIGHTEN_NG: '扭力不足', PHASE_WARNING: '即將超時',
-    TIMEOUT: '超時', AUTOMATION_FAULT: '承盤卡住', TOOL_FAULT: '工具故障' };
+  const ALERT_LABEL = { EARLY_ATTEMPT: '降前鎖附', SEQUENCE_ERROR: '錯誤步驟', TIGHTEN_NG: '扭力不足', PHASE_WARNING: '即將超時',
+    TIMEOUT: '超時', AUTOMATION_FAULT: '承盤異常', TOOL_FAULT: '訊號中斷' };
   function buildChapters() {
     const run = st.run;
     const marks = run.markers();
@@ -219,14 +219,14 @@ export function createSim(deps) {
     const missed = legacy.missed.length;
     const oldHtml = `
       <dl class="sim-kv">
-        <dt>工具</dt><dd>${spinning ? '<b class="t-run">鎖附中</b>' : '隨時可轉'}</dd>
+        <dt>機器手臂 ${side}</dt><dd>${spinning ? '<b class="t-run">鎖附中</b>' : '隨時可轉'}</dd>
         <dt>提示</dt><dd class="muted">${a ? '沒有' : '—'}</dd>
-        <dt>已鎖</dt><dd>${tightened} 顆${early ? ` <b class="t-warn">（${early} 顆提前）</b>` : ''}</dd>
+        <dt>已鎖</dt><dd>${tightened} 顆${early ? ` <b class="t-warn">（${early} 顆降前鎖上）</b>` : ''}</dd>
         <dt>問題</dt><dd><b class="${missed ? 't-bad' : ''}">${missed ? `${missed} 件沒被發現` : '—'}</b></dd>
       </dl>`;
     const iotHtml = `
       <dl class="sim-kv">
-        <dt>工具</dt><dd><b class="${s.tool === 'ENABLED' || s.tool === 'RUNNING' ? 't-ok' : 't-warn'}">${iotTool}</b></dd>
+        <dt>機器手臂 ${side}</dt><dd><b class="${s.tool === 'ENABLED' || s.tool === 'RUNNING' ? 't-ok' : 't-warn'}">${iotTool}</b></dd>
         <dt>提示</dt><dd>${a ? `<b class="t-bad">「${esc(a.say || a.text)}」</b>` : '—'}</dd>
         <dt>已鎖</dt><dd>${s.counts.A.done + s.counts.C.done} / ${s.counts.A.total + s.counts.C.total} 顆・紀錄 ${counts.records} 筆</dd>
         <dt>問題</dt><dd><b class="${counts.blocked ? 't-ok' : ''}">${counts.blocked ? `${counts.blocked} 件當場處理` : '—'}</b></dd>
@@ -280,7 +280,7 @@ export function createSim(deps) {
           react: reacting ? arm.getControllerPos() : null,
         });
       }
-      // 現行手臂沒有「下一顆」提示，只看得到鎖了沒（提前鎖上的標成橘紅）
+      // 現行手臂沒有「下一顆」提示，只看得到鎖了沒（降前鎖上的標成橘紅）
       w.env.paintBolts(key === 'old'
         ? { L: { bolts: legacy.bolts }, R: { bolts: legacy.bolts } }
         : run.states, time);

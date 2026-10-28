@@ -587,7 +587,10 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .seg-track { overflow: visible; }
 .tseg { position: absolute; top: 2px; bottom: 2px; border-radius: 4px; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; color: #0a0e14; pointer-events: none; overflow: hidden; }
 .tseg-orange { background: color-mix(in srgb, var(--orange) 70%, transparent); }
-.tseg-yellow { background: var(--yellow); min-width: 12px; }
+.tseg em { font-style: normal; white-space: nowrap; }
+.tseg-yellow { background: var(--yellow); min-width: 12px; overflow: visible; z-index: 1; }
+/* 承盤下降只有幾秒，段落太窄，文字做成跨出去的小標籤 */
+.tseg-yellow em { padding: 2px 7px; border-radius: 4px; background: var(--yellow); box-shadow: 0 0 0 2px #0a0e14; }
 .tseg-teal { background: color-mix(in srgb, var(--teal) 70%, transparent); }
 .checkpoint { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--red); pointer-events: none; }
 .pips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 0 16px 14px; background: var(--panel); }
@@ -760,6 +763,7 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
   .demo-cmp, .parts-cols, .feature-list, .demo { grid-template-columns: 1fr; }
   .demo-pick { display: flex; }
   .sim-ctl { padding: 14px; gap: 14px; }
+  .tseg-yellow em span { display: none; }
   .sim-ctl-row .spacer { display: none; }
   .sim-ctl-row + .sim-ctl-row { padding-top: 14px; }
   

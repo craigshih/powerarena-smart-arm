@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>改良版鎖附手臂</title>
-  <meta name="description" content="引擎組裝站 IoT 防錯提案的互動 mock-up：廠房情境、改良版鎖附手臂、現行與改良後對比、事後追溯。">
+  <meta name="description" content="引擎組裝站 IoT 防錯提案的互動 mock-up：廠房情境、改良版鎖附手臂、現行與改良後對比、異常事件追溯。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0e14'/%3E%3Cpath d='M6 7h20M11 7v5l7 3v6' stroke='%23f2c230' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Crect x='15' y='21' width='6' height='6' rx='1.5' fill='%233ccf6b'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
@@ -31,7 +31,7 @@
           <div class="ng-sub">
             <button data-go="product" type="button">介紹</button>
             <button data-go="arm" type="button">情境演練</button>
-            <button data-go="settings" type="button">師傅設定</button>
+            <button data-go="settings" type="button">鎖附參數設定</button>
           </div>
         </div>
         <div class="ng" data-group="vs">
@@ -41,7 +41,7 @@
             <button data-go="compare" type="button">對照表</button>
           </div>
         </div>
-        <div class="ng" data-group="trace"><button data-go="trace" type="button">事後追溯</button></div>
+        <div class="ng" data-group="trace"><button data-go="trace" type="button">異常事件追溯</button></div>
       </div>
     </nav>
     <button id="mute" class="btn sound" type="button" aria-pressed="false" title="語音廣播開關">
@@ -254,11 +254,11 @@
       </aside>
     </section>
 
-    <!-- ── 手臂・師傅設定 ───────────────────────── -->
-    <section class="view doc" data-view="settings" aria-label="師傅設定" hidden>
+    <!-- ── 手臂・鎖附參數設定 ───────────────────────── -->
+    <section class="view doc" data-view="settings" aria-label="鎖附參數設定" hidden>
       <div class="page">
         <header class="page-head">
-          <h2>師傅設定</h2>
+          <h2>鎖附參數設定</h2>
           <p>只設扭力與角度；平常依 VIN 自動帶入。</p>
         </header>
         <div class="set-bar">
@@ -366,21 +366,21 @@
           <table class="compare">
             <thead><tr><th>故障</th><th>工具反應</th><th>誰處理</th><th>分類</th></tr></thead>
             <tbody>
-              <tr><th>承盤卡住</th><td>上方不開放</td><td>班長復歸承盤</td><td><span class="cat cat-AUTOMATION">自動化錯誤</span></td></tr>
-              <tr><th>工具斷線</th><td>立即停轉鎖住</td><td>班長、工具商</td><td><span class="cat cat-TOOL">工具錯誤</span></td></tr>
-              <tr><th>感測器異常</th><td>鎖住</td><td>工具商</td><td><span class="cat cat-TOOL">工具錯誤</span></td></tr>
-              <tr><th>控制器故障</th><td>鑰匙切降級，回現行作業</td><td>維護＋班長</td><td><span class="cat cat-TOOL">工具錯誤</span></td></tr>
+              <tr><th>承盤異常</th><td>上方不開放</td><td>班長復歸承盤</td><td><span class="cat cat-AUTOMATION">系統異常 A</span></td></tr>
+              <tr><th>扭矩槍訊號中斷</th><td>立即停轉鎖住</td><td>班長、工具商</td><td><span class="cat cat-TOOL">系統異常 B</span></td></tr>
+              <tr><th>感測器異常</th><td>鎖住</td><td>工具商</td><td><span class="cat cat-TOOL">系統異常 B</span></td></tr>
+              <tr><th>控制器故障</th><td>鑰匙切降級，回現行作業</td><td>維護＋班長</td><td><span class="cat cat-TOOL">系統異常 B</span></td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- ── 事後追溯 ───────────────────────── -->
-    <section class="view doc" data-view="trace" aria-label="事後追溯" hidden>
+    <!-- ── 異常事件追溯 ───────────────────────── -->
+    <section class="view doc" data-view="trace" aria-label="異常事件追溯" hidden>
       <div class="page">
         <header class="page-head">
-          <h2>事後追溯</h2>
+          <h2>異常事件追溯</h2>
           <p>每顆螺絲一筆履歷（示範資料＋你播放過的車）。</p>
         </header>
         <div id="trace-summary" class="summary"></div>
@@ -396,8 +396,8 @@
           <select id="f-cat" aria-label="錯誤分類">
             <option value="">全部分類</option>
             <option value="ANY">只看有錯誤</option>
-            <option value="AUTOMATION">自動化錯誤</option>
-            <option value="TOOL">工具錯誤</option>
+            <option value="AUTOMATION">系統異常 A：承盤異常</option>
+            <option value="TOOL">系統異常 B：扭矩槍訊號中斷</option>
             <option value="OPERATION">作業異常</option>
           </select>
           <div class="filter-actions">
