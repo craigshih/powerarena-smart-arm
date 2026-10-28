@@ -45,6 +45,8 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(5, 11, 7);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004; // 避免陰影痤瘡（表面出現條紋、手和工具上的黑色鋸齒殘影）
+sun.shadow.normalBias = 0.03;
 Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
 scene.add(sun);
 const fill = new THREE.PointLight(0xffe2b0, 14, 8);
@@ -868,7 +870,7 @@ function frame() {
 }
 // 測試用：網址加 ?debug 時可用 __step(dt, n) 手動推進畫面（背景分頁不跑動畫時）
 if (new URLSearchParams(location.search).has('debug')) window.__step = (dt = 1 / 30, n = 1) => { for (let i = 0; i < n; i++) step(dt); };
-if (new URLSearchParams(location.search).has('debug')) window.__views = { get product() { return productView; }, get sim() { return sim; }, get station() { return stationView; }, resize };
+if (new URLSearchParams(location.search).has('debug')) window.__views = { get product() { return productView; }, get sim() { return sim; }, get station() { return stationView; }, main: { scene, arms, ops, env }, resize };
 
 // ── 啟動 ─────────────────────────────────────
 buildSideCards();

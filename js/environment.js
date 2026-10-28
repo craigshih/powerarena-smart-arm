@@ -33,6 +33,12 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
 
   // 拿掉打開的引擎蓋：師傅的手會穿過它，不符合現場（twin 的複製檔不改，在這裡藏起來）
   station.layers.vehicle.traverse((o) => { if (o.isGroup && Math.abs(o.rotation.x + 1.2) < 1e-6) o.visible = false; });
+  // 散熱器外框、螺絲支架（鋼材）和深色本體有共面的面，會互相閃爍出鋸齒狀殘影；讓鋼材略為往前畫
+  station.layers.vehicle.traverse((o) => {
+    if (o.isMesh && o.material.color?.getHex() === 0x6b7280 && !o.material.polygonOffset) {
+      Object.assign(o.material, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    }
+  });
   setLayer('people', false);
   setLayer('frustums', frustums);
   setLayer('dims', dims);

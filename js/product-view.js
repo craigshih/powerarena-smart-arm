@@ -77,6 +77,8 @@ export function createProductView(deps) {
   key.position.set(3, 7, 4);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
+  key.shadow.bias = -0.0004; // 避免陰影痤瘡（表面出現條紋、手和工具上的黑色鋸齒殘影）
+  key.shadow.normalBias = 0.03;
   Object.assign(key.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 16 });
   scene.add(key);
   const rim = new THREE.DirectionalLight(0x9cc4ff, 0.9);

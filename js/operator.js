@@ -46,7 +46,9 @@ export function createOperator({ side = 'L', height = 1.75, platformY = 1.42, x 
 
   const root = new THREE.Group();
   root.name = `operator-${side}`;
-  const baseX = x ?? s * 1.06;
+  // 車身比兩側高台間距寬，葉子板懸在高台上方（外緣 x = ±0.9675）；師傅站在外側、越過開口伸手，
+  // 腿與腰不能進到葉子板裡
+  const baseX = x ?? s * 1.09;
   root.position.set(baseX, platformY, z);
   root.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2; // 面向引擎室（本地 +Z 朝前）
 
@@ -92,8 +94,8 @@ export function createOperator({ side = 'L', height = 1.75, platformY = 1.42, x 
   for (const h of ['R', 'L']) {
     const upper = mesh(new THREE.CylinderGeometry(0.052 * k, 0.046 * k, 1, 10), M.shirt);
     const fore = mesh(new THREE.CylinderGeometry(0.044 * k, 0.038 * k, 1, 10), M.skin);
-    const elbow = mesh(new THREE.SphereGeometry(0.048 * k, 10, 8), M.shirt);
-    const hand = mesh(new THREE.SphereGeometry(0.045 * k, 10, 8), M.glove);
+    const elbow = mesh(new THREE.SphereGeometry(0.048 * k, 16, 12), M.shirt);
+    const hand = mesh(new THREE.SphereGeometry(0.045 * k, 18, 14), M.glove);
     root.add(upper, fore, elbow, hand);
     arms[h] = { upper, fore, elbow, hand, cur: null };
   }
@@ -165,12 +167,12 @@ export function createOperator({ side = 'L', height = 1.75, platformY = 1.42, x 
     let stepX = baseX;
     if (working) {
       const g = localOf(ctx.grip);
-      yaw = THREE.MathUtils.clamp(yawTo(g) * 0.6, -0.7, 0.7);
+      yaw = THREE.MathUtils.clamp(yawTo(g) * 0.3, -0.2, 0.2); // 幾乎正對車身彎腰，頭才不會轉進工具上方的吊管
       const shoulderY = 1.38 * k;
-      lean = THREE.MathUtils.clamp((shoulderY - g.y) * 0.75 + (Math.hypot(g.x, g.z) - 0.35) * 0.6, 0.05, 0.7);
+      lean = THREE.MathUtils.clamp((shoulderY - g.y) * 1.1 + (Math.hypot(g.x, g.z) - 0.35) * 0.6, 0.05, 1.0); // 站在葉子板外側，鎖下方要彎腰越過開口
       headPitch = THREE.MathUtils.clamp(0.25 + lean * 0.6, 0.2, 0.9);
-      stepZ = THREE.MathUtils.clamp(ctx.grip.z + 0.05, z - 0.35, z + 0.3);
-      stepX = s * Math.max(0.97, Math.abs(baseX) - lean * 0.08);
+      // 站在工具旁邊 0.24 m（右手那一側），彎腰時頭在吊管旁邊、不會穿過去
+      stepZ = THREE.MathUtils.clamp((ctx.top ?? ctx.grip).z - s * 0.24, z - 0.6, z + 0.6);
     } else if (idleT > 2.5) {
       // 等待時轉身做別的事（拿零件、看別處），不會一直盯著前方
       const phase = Math.floor((idleT - 2.5) / 5) % 2;
@@ -206,6 +208,7 @@ export function createOperator({ side = 'L', height = 1.75, platformY = 1.42, x 
     if (working) {
       rT = localOf(ctx.grip);
       lT = localOf(ctx.top ?? ctx.grip);
+      lT.y += 0.03; // 扶在工具頂蓋上，不要壓到上方螺絲的支架
       if (ctx.react) { rT.y += 0.06; rT.z -= 0.05; } // 聽到提示：鬆開扳機、手微微抬起
     } else {
       const sway = Math.sin(time * 1.1) * 0.01;

@@ -35,6 +35,8 @@ function makeWorld(legacy) {
   sun.position.set(5, 11, 7);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.bias = -0.0004; // 避免陰影痤瘡（表面出現條紋、手和工具上的黑色鋸齒殘影）
+  sun.shadow.normalBias = 0.03;
   Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 30 });
   scene.add(sun);
   const fill = new THREE.PointLight(0xffe2b0, 14, 8);

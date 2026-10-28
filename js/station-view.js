@@ -37,6 +37,8 @@ export function createStationView(deps) {
   sun.position.set(6, 12, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0004; // 避免陰影痤瘡（表面出現條紋、手和工具上的黑色鋸齒殘影）
+  sun.shadow.normalBias = 0.03;
   Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 40 });
   scene.add(sun);
   const fill = new THREE.PointLight(0xffe2b0, 18, 9);

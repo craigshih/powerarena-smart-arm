@@ -382,10 +382,12 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   toolBody.add(cyl(0.032, 0.07, M.dark, 0, 0.115, 0));
   toolBody.add(cyl(0.036, 0.17, M.body, 0, 0.275, 0));
   toolBody.add(cyl(0.031, 0.02, M.yellow, 0, 0.35, 0));
-  // 側握把（朝外側，師傅站的那一邊）
-  toolBody.add(box(0.12, 0.024, 0.026, M.body, s * 0.09, 0.3, 0));
-  toolBody.add(box(0.026, 0.13, 0.032, M.body, s * 0.15, 0.25, 0));
-  toolBody.add(box(0.012, 0.03, 0.016, M.trigger, s * 0.133, 0.27, 0));
+  // 側握把：沿車身前後方向、朝師傅右手那一側。螺絲在引擎室開口下方，
+  // 握把若朝外側（師傅那一邊）會插進葉子板，師傅的手也會跟著穿進車身
+  const hz = -s; // 左側師傅面向 −X，右手在 −Z；右側相反
+  toolBody.add(box(0.026, 0.024, 0.12, M.body, 0, 0.3, hz * 0.09));
+  toolBody.add(box(0.032, 0.13, 0.026, M.body, 0, 0.25, hz * 0.15));
+  toolBody.add(box(0.016, 0.03, 0.012, M.trigger, s * 0.02, 0.27, hz * 0.15));
   tool.add(tagPart(toolBody, 'enable'));
   const transducer = cyl(0.039, 0.03, M.sensor, 0, 0.165, 0);
   tool.add(tagPart(transducer, 'torque'));
@@ -586,7 +588,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   }
 
   // 握把、工具頂端、控制器燈號的世界座標（給師傅模型伸手與轉頭用）
-  const getGrip = (t = new THREE.Vector3()) => tool.localToWorld(t.set(s * 0.15, 0.25, 0));
+  const getGrip = (t = new THREE.Vector3()) => tool.localToWorld(t.set(0, 0.29, -s * 0.15)); // 握在側握把上段
   const getToolTop = (t = new THREE.Vector3()) => tool.localToWorld(t.set(0, 0.33, 0));
   const getControllerPos = (t = new THREE.Vector3()) => ctrl.localToWorld(t.set(0.09, cabY + 0.27, 0));
 
