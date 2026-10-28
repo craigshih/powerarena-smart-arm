@@ -31,6 +31,8 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
     }
   }
 
+  // 拿掉打開的引擎蓋：師傅的手會穿過它，不符合現場（twin 的複製檔不改，在這裡藏起來）
+  station.layers.vehicle.traverse((o) => { if (o.isGroup && Math.abs(o.rotation.x + 1.2) < 1e-6) o.visible = false; });
   setLayer('people', false);
   setLayer('frustums', frustums);
   setLayer('dims', dims);

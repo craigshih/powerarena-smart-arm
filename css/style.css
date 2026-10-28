@@ -486,11 +486,12 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .demo { padding: 12px 14px 14px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
 .demo-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .demo-head b { font-size: 14px; }
-.demo-list { display: flex; flex-wrap: wrap; gap: 6px; }
-.demo-list button { height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line); background: #0f1520; font-size: 13px; }
-.demo-list button:hover { border-color: #3a5175; }
-.demo-list button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, #0f1520); color: var(--accent); }
-.demo-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.demo { grid-template-columns: auto 1fr; align-items: center; gap: 12px 16px; }
+.demo-pick { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.demo-sel { position: relative; display: inline-flex; flex: 1; }
+.demo-pick i { position: absolute; left: 13px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--accent)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--accent)) 25%, transparent); pointer-events: none; }
+.demo-pick select { height: 40px; min-width: 200px; padding: 0 34px 0 30px; font-size: 14.5px; font-weight: 600; color: var(--text); width: 100%; border-color: color-mix(in srgb, var(--c, var(--accent)) 55%, var(--line)); background: #0f1520; cursor: pointer; }
+.demo-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .demo-cmp p { margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 13px; background: var(--panel-2); border: 1px solid var(--line); color: #d4dcea; }
 .demo-cmp b { display: inline-block; font-size: 11px; padding: 0 7px; margin-right: 8px; border-radius: 5px; }
 #demo-old b { background: #2a303a; color: #aab6c9; }
@@ -641,9 +642,13 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .pd-uses .u em { color: #b9c4d6; }
 
 /* ── 實境對比：章節按鈕＋時間軸 ─────────── */
-.sim-seek { display: grid; gap: 8px; margin-bottom: 12px; }
-.chapters { display: flex; flex-wrap: wrap; gap: 6px; }
-.chapters button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; }
+.sim-ctl { display: grid; gap: 16px; padding: 16px 18px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.sim-ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
+.sim-ctl-row .spacer { flex: 1; }
+.sim-ctl-row + .sim-ctl-row { padding-top: 16px; border-top: 1px solid var(--line); }
+.ctl-label { flex: none; }
+.chapters { display: flex; flex-wrap: wrap; gap: 10px; }
+.chapters button { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; }
 .chapters button .num { color: var(--muted); font-size: 11.5px; }
 .chapters button:hover { border-color: #3a5175; }
 .chapters button.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel-2)); }
@@ -752,7 +757,11 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
   
   .sim-grid { grid-template-columns: 1fr; }
   .product-view { aspect-ratio: 1 / 1; }
-  .demo-cmp, .parts-cols, .feature-list { grid-template-columns: 1fr; }
+  .demo-cmp, .parts-cols, .feature-list, .demo { grid-template-columns: 1fr; }
+  .demo-pick { display: flex; }
+  .sim-ctl { padding: 14px; gap: 14px; }
+  .sim-ctl-row .spacer { display: none; }
+  .sim-ctl-row + .sim-ctl-row { padding-top: 14px; }
   
   .pick-hint { display: none; }
   .fx-label { font-size: 11px; padding: 3px 8px 3px 5px; }

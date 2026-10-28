@@ -262,7 +262,7 @@ export function createProductView(deps) {
       plant.fx.reset();
       plant.fx.onRecords(current.records, { pops: false });
     }
-    document.querySelectorAll('[data-demo]').forEach((b) => b.classList.toggle('on', b.dataset.demo === d.key));
+    $('#demo-select').value = d.key;
     const a = state.alarm && state.alarm.level !== 'info' ? state.alarm : null;
     const [color, ic, text, blink] = d.look;
     const label = d.key === 'warn' && state.remaining != null ? `剩 ${Math.ceil(state.remaining)} 秒` : text;
@@ -271,6 +271,7 @@ export function createProductView(deps) {
     const sb = $('#status-badge');
     sb.hidden = st.mode === 'old' || st.mode === 'both'; // 並排時每支手臂各有自己的狀態徽章
     sb.style.setProperty('--c', color);
+    $('.demo-pick').style.setProperty('--c', color);
     sb.classList.toggle('blink', !!blink);
     sb.innerHTML = `${icon(ic)}<b>${esc(label)}</b>${a ? `<span>「${esc(a.say || a.text)}」</span>` : ''}`;
     $('#demo-iot').innerHTML = `<b>新款</b>${esc(label)}`;
@@ -286,6 +287,8 @@ export function createProductView(deps) {
     L.el.style.setProperty('--c', color);
     L.el.innerHTML = `${icon(ic)}<span>${esc(label)}</span>`;
   }
+  // 廠房實境裡師傅站在車子左外側（+X），鏡頭改從車頭前上方看，才不會被師傅擋住
+  const STATUS_OFFSET = { studio: new THREE.Vector3(1.25, 0.35, 1.05), plant: new THREE.Vector3(-0.8, 0.8, 1.7) };
   // 狀態特寫：工具、握把燈與手臂螢幕同時入鏡
   function focusStatus() {
     arms.iot.updateMatrixWorld(true);
@@ -295,7 +298,7 @@ export function createProductView(deps) {
     stopSpin();
     st.focused = 'status';
     $('#product-back').hidden = false;
-    flyTo(tgt.clone().add(new THREE.Vector3(1.25, 0.35, 1.05)), tgt);
+    flyTo(tgt.clone().add(STATUS_OFFSET[st.mode === 'plant' ? 'plant' : 'studio']), tgt);
   }
   // 狀態特寫的鏡頭中心：手臂螢幕與套筒的中點（工具移動時跟著走）
   function statusCenter() {
@@ -368,12 +371,12 @@ export function createProductView(deps) {
   $('#product-spin').addEventListener('change', (e) => (controls.autoRotate = e.target.checked));
   $('#product-new').addEventListener('change', renderFeature);
   $('#product-back').addEventListener('click', () => overview());
-  $('#demo-list').innerHTML = DEMOS.map((d) => `<button type="button" data-demo="${d.key}">${d.label}</button>`).join('');
-  $('#demo-list').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-demo]');
-    if (!b) return;
+  const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait']], ['錯誤', ['early', 'ng', 'tray', 'fault']]];
+  $('#demo-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
+    .map((k) => `<option value="${k}">${DEMOS.find((d) => d.key === k).label}</option>`).join('')}</optgroup>`).join('');
+  $('#demo-select').addEventListener('change', (e) => {
     unlockAudio();
-    st.demo = b.dataset.demo;
+    st.demo = e.target.value;
     applyDemo(true);
   });
 

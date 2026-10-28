@@ -138,7 +138,7 @@
               <div id="status-badge" class="status-badge" hidden></div>
             </div>
             <div class="demo">
-              <div id="demo-list" class="demo-list" role="group" aria-label="手臂狀態"></div>
+              <label class="demo-pick"><span>狀態</span><span class="demo-sel"><i></i><select id="demo-select" aria-label="手臂狀態"></select></span></label>
               <div class="demo-cmp"><p id="demo-old"></p><p id="demo-iot"></p></div>
             </div>
           </figure>
@@ -280,21 +280,25 @@
     <!-- ── 現在 vs 改良後・實境對比 ───────────────── -->
     <section class="view doc" data-view="sim" aria-label="實境對比" hidden>
       <div class="page wide">
-        <div class="screen-bar">
-          <label class="select"><span class="muted small">情境</span><select id="sim-scenario"></select></label>
-          <button id="sim-play" class="btn primary" type="button">播放</button>
-          <div class="seg" role="group" aria-label="觀看哪一側">
-            <button data-sim-side="L" type="button" class="on">左側</button>
-            <button data-sim-side="R" type="button">右側</button>
+        <div class="sim-ctl">
+          <div class="sim-ctl-row">
+            <label class="select"><span class="muted small">情境</span><select id="sim-scenario"></select></label>
+            <button id="sim-play" class="btn primary" type="button">播放</button>
+            <span class="spacer"></span>
+            <div class="seg" role="group" aria-label="觀看哪一側">
+              <button data-sim-side="L" type="button" class="on">左側</button>
+              <button data-sim-side="R" type="button">右側</button>
+            </div>
+            <div class="seg" role="group" aria-label="播放速度">
+              <button data-sim-speed="1" type="button">1×</button>
+              <button data-sim-speed="2" type="button" class="on">2×</button>
+              <button data-sim-speed="4" type="button">4×</button>
+            </div>
           </div>
-          <div class="seg" role="group" aria-label="播放速度">
-            <button data-sim-speed="1" type="button">1×</button>
-            <button data-sim-speed="2" type="button" class="on">2×</button>
-            <button data-sim-speed="4" type="button">4×</button>
+          <div class="sim-ctl-row">
+            <span class="muted small ctl-label">跳到</span>
+            <div id="sim-chapters" class="chapters" role="group" aria-label="跳到"></div>
           </div>
-        </div>
-        <div class="sim-seek">
-          <div id="sim-chapters" class="chapters" role="group" aria-label="跳到"></div>
           <div class="sim-seek-track">
             <div id="sim-track" class="t-track">
               <div id="sim-fill" class="t-fill"></div>
