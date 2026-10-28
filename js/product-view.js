@@ -269,7 +269,7 @@ export function createProductView(deps) {
     setLook('iot', color, ic, label, blink);
     setLook('old', '#8b98ad', d.oldRun ? 'spin' : 'free', d.oldRun ? '鎖附中' : '隨時可轉', false);
     const sb = $('#status-badge');
-    sb.hidden = st.mode === 'old';
+    sb.hidden = st.mode === 'old' || st.mode === 'both'; // 並排時每支手臂各有自己的狀態徽章
     sb.style.setProperty('--c', color);
     sb.classList.toggle('blink', !!blink);
     sb.innerHTML = `${icon(ic)}<b>${esc(label)}</b>${a ? `<span>「${esc(a.say || a.text)}」</span>` : ''}`;
