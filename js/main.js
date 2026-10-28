@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { P, SRC, ZONES, SEQUENCE_STATUS, SPEC, PARAM_GROUPS, zoneById, boltPosition } from './arm-params.js';
-import { EVENT_TYPES, CATEGORY, RESULT_LABEL, signalsFor } from './arm-logic.js';
+import { EVENT_TYPES, CATEGORY, RESULT_LABEL, PHASE_STEP, signalsFor } from './arm-logic.js';
 import { createSmartArm, drawArmScreen, PRINCIPLES } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun, generateHistory } from './scenarios.js';
 import { buildEnvironment } from './environment.js';
@@ -520,7 +520,7 @@ function renderSettings() {
     const lo = (v.torque * (1 - v.tol / 100)).toFixed(1);
     const hi = (v.torque * (1 + v.tol / 100)).toFixed(1);
     return `<article class="zcard" style="--c:${z.phase === 'A' ? '#ff8a3d' : '#3dd6d0'}">
-      <header><b>${z.label}</b><small>${z.id} · ${z.phase} 階段 · ${z.bolts} 顆 · Pset ${SPEC[z.id].pset.v}</small></header>
+      <header><b>${z.label}</b><small>${z.id} · 步驟 ${z.step} · ${z.bolts} 顆 · Pset ${SPEC[z.id].pset.v}</small></header>
       ${FIELDS.map((f) => `<label class="field"><span>${f.label}</span>
         <span class="stepper"><button type="button" data-z="${z.id}" data-k="${f.k}" data-d="-1" aria-label="${f.label}減少">−</button>
         <input type="number" inputmode="decimal" data-z="${z.id}" data-k="${f.k}" value="${v[f.k]}" min="${f.min}" max="${f.max}" step="${f.step}" aria-label="${z.label}${f.label}">
@@ -663,11 +663,11 @@ function renderTrace() {
       <td data-label="結果"><span class="res res-${r.result}">${RESULT_LABEL[r.result]}</span></td>
       <td data-label="錯誤分類">${catHtml(r.cats)}</td><td data-label="說明" class="wrap full">${esc(r.notes.join('；')) || '—'}</td></tr>`).join('');
   } else {
-    head = ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '階段', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
+    head = ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '步驟', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
     body = shown.map((r) => `<tr>
       <td data-label="時間">${fmtTs(r.ts)}</td><td data-label="VIN" class="full"><code>${r.vin}</code>${liveChip(r.vin)}</td>
       <td data-label="工位">${r.station}</td><td data-label="側">${r.side}</td><td data-label="師傅">${r.operator}</td>
-      <td data-label="螺絲位置">${where(r)}</td><td data-label="階段">${r.phase || '—'}</td>
+      <td data-label="螺絲位置">${where(r)}</td><td data-label="步驟">${PHASE_STEP[r.phase] ?? '—'}</td>
       <td data-label="事件">${EVENT_TYPES[r.type].label}<br><code>${r.type}</code></td>
       <td data-label="扭力 N·m" class="n">${r.torqueNm ?? '—'}</td><td data-label="角度 °" class="n">${r.angleDeg ?? '—'}</td>
       <td data-label="結果"><span class="res res-${r.result}">${RESULT_LABEL[r.result]}</span></td>
@@ -756,11 +756,11 @@ $('#f-pdf').addEventListener('click', async () => {
     const cat = (c) => `<span style="display:inline-block;padding:0 6px;border-radius:8px;border:1px solid #999;font-size:9px;margin-right:2px">${CATEGORY[c]}</span>`;
     const head = bolt
       ? ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '扭力 N·m', '角度 °', '結果', '錯誤分類', '說明']
-      : ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '階段', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
+      : ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '步驟', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
     const body = used.map((r) => {
       const cells = bolt
         ? [fmtTs(r.ts), r.vin + (liveVins.has(r.vin) ? '＊' : ''), r.station, r.side, r.operator, where(r), r.torqueNm, r.angleDeg, RESULT_LABEL[r.result], [...r.cats].map(cat).join('') || '—', esc(r.notes.join('；')) || '—']
-        : [fmtTs(r.ts), r.vin + (liveVins.has(r.vin) ? '＊' : ''), r.station, r.side, r.operator, where(r), r.phase || '—', EVENT_TYPES[r.type].label, r.torqueNm ?? '—', r.angleDeg ?? '—', RESULT_LABEL[r.result], r.errorCategory ? cat(r.errorCategory) : '—'];
+        : [fmtTs(r.ts), r.vin + (liveVins.has(r.vin) ? '＊' : ''), r.station, r.side, r.operator, where(r), PHASE_STEP[r.phase] ?? '—', EVENT_TYPES[r.type].label, r.torqueNm ?? '—', r.angleDeg ?? '—', RESULT_LABEL[r.result], r.errorCategory ? cat(r.errorCategory) : '—'];
       const bad = ['NG', 'FAULT', 'BLOCKED'].includes(r.result);
       return `<tr style="page-break-inside:avoid${bad ? ';background:#fff1f1' : ''}">${cells.map((c) => `<td style="padding:4px 6px;border-bottom:1px solid #ddd">${c}</td>`).join('')}</tr>`;
     }).join('');

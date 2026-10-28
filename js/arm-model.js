@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { P, SEQUENCE, armMount, zoneById } from './arm-params.js';
-import { signalsFor, describe } from './arm-logic.js';
+import { signalsFor, describe, PHASE_STEP } from './arm-logic.js';
 
 export const PRINCIPLES = {
   1: { short: '不增加動作', title: '不違反人類自然行為、不增加成本', desc: '不能讓師傅多按按鈕，也不能讓他多看一個地方。' },
@@ -28,7 +28,7 @@ export const ARM_PARTS = [
     short: '承盤沒降，工具不轉', beforeShort: '工具隨時能轉',
     spec: ['controllerPsets', 'toolTorqueRange'],
     before: '工具隨時都能轉，靠師傅自己記得等承盤。',
-    what: '控制器讀承盤 PLC 的「下降完成」訊號。A 階段只開放第一階段的螺絲數，鎖滿就自動鎖住工具；承盤降到底才開放 C。',
+    what: '控制器讀承盤 PLC 的「下降完成」訊號。步驟 1 只開放下方螺絲，鎖滿就自動鎖住工具；承盤降到底才開放步驟 3 的上方螺絲。',
     why: '師傅照原本的肌肉記憶作業，不用多按按鈕；能不能鎖由工具決定，而不是靠人記得。',
     fault: '控制器斷線時工具預設鎖住（失效即安全）；班長可用鑰匙切到降級模式。',
   },
@@ -75,7 +75,7 @@ export const ARM_PARTS = [
     before: '工具和承盤沒有連線，各做各的。',
     what: '控制器接承盤的「開始下降」「下降完成」數位訊號。承盤開始下降 8 秒內沒收到「下降完成」，判自動化錯誤。',
     why: '直接用設備本身的訊號判斷時機，不靠師傅或攝影機推測。',
-    fault: '訊號遺失 → 第二階段維持鎖定並通知班長，紀錄歸在自動化錯誤。',
+    fault: '訊號遺失 → 步驟 3 維持鎖定並通知班長，紀錄歸在自動化錯誤。',
   },
   {
     key: 'key', n: 7, title: '班長鑰匙開關（降級模式）', tag: '鑰匙開關', principles: [3],
@@ -162,7 +162,7 @@ export function drawArmScreen(c, state, side) {
     const z = zoneById(id);
     const cur = state.expected?.zoneId === id;
     c.fillStyle = cur ? '#ffffff' : '#9aa6b8';
-    c.fillText(`${z.phase} ${z.label}`, 18, y);
+    c.fillText(`${z.step} ${z.label}`, 18, y);
     state.bolts[id].forEach((b, i) => {
       const x = w - 30 - (state.bolts[id].length - 1 - i) * 34;
       c.beginPath();
@@ -185,7 +185,7 @@ export function drawArmScreen(c, state, side) {
     c.fillStyle = bad ? '#ffffff' : '#1a1407';
     // 預警文字跟著倒數；太長就縮小字級，不截斷
     const text = a.type === 'PHASE_WARNING' && state.remaining != null
-      ? `${state.phase === 'A' ? '第一' : '第二'}階段剩 ${Math.ceil(state.remaining)} 秒`
+      ? `步驟 ${PHASE_STEP[state.phase]} 剩 ${Math.ceil(state.remaining)} 秒`
       : a.text;
     let px = 28;
     c.font = font(px);

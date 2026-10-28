@@ -1,6 +1,6 @@
 // 3D 示警效果（UI 層）：讓七種情境在畫面上一眼就分得出來。
 // 每一種警示有自己的顏色、圖示、標記形狀與指向的位置：
-//   提前鎖附    紅   ⛔  第二階段那顆螺絲打叉＋承盤框黃閃「承盤未降」
+//   提前鎖附    紅   ⛔  上方那顆螺絲打叉＋承盤框黃閃「承盤未降」
 //   順序錯誤    洋紅 ⇄   錯的區域打叉、對的那顆綠圈，中間拉一條箭頭
 //   扭力不足    紅   ✕   NG 那顆快速脈動，標籤寫實際扭力與下限
 //   即將超時    黃   ⏱   下一顆外圍倒數圈
@@ -297,7 +297,7 @@ export function createAlertFx(scene) {
       if (trayMode === 'automation') {
         setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '承盤卡住・自動化錯誤', '不是師傅的錯，等班長復歸'), 'fx-automation');
       } else {
-        setLabel(trayLabel, labelHtml({ icon: 'stop' }, '承盤未下降', '第二階段不開放'), 'fx-warn');
+        setLabel(trayLabel, labelHtml({ icon: 'stop' }, '承盤未下降', '上方螺絲不開放'), 'fx-warn');
       }
     } else {
       trayBox.visible = false;

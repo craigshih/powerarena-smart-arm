@@ -53,7 +53,9 @@ export const FAULT_TEXT = {
   TRAY_NOT_STARTED: '承盤未依節拍下降',
 };
 
-export const PHASE_LABEL = { IDLE: '等待車輛', A: '第一階段鎖附', B: '承盤下降', C: '第二階段鎖附', DONE: '本車完成' };
+export const PHASE_LABEL = { IDLE: '等待車輛', A: '步驟 1 鎖下方螺絲', B: '步驟 2 承盤下降', C: '步驟 3 鎖上方螺絲', DONE: '本車完成' };
+// 畫面上一律用場域模型的步驟編號（1 鎖下方、2 承盤下降、3 鎖上方）；事件紀錄的 phase 欄位仍是 A／B／C
+export const PHASE_STEP = { A: '1', B: '2', C: '3' };
 
 export const TOOL_TEXT = {
   ENABLED: '可鎖附',
@@ -194,7 +196,7 @@ export function createArmLogic(options = {}) {
       else {
         s.phase = 'B';
         s.deadline = null;
-        alarm('DONE_A', 'info', '第一階段完成，等待承盤下降', '', 3);
+        alarm('DONE_A', 'info', '下方螺絲完成，等待承盤下降', '', 3);
       }
     }
     if (s.phase === 'B' && trayReady()) startC();
@@ -214,14 +216,14 @@ export function createArmLogic(options = {}) {
     const left = zonesOf(phase).reduce((k, id) => k + s.bolts[id].filter((b) => b !== 'OK').length, 0);
     rec('TIMEOUT', { phase, zoneId: n?.zoneId ?? '', boltIndex: n?.boltIndex ?? null });
     clearAlarm('PHASE_WARNING');
-    alarm('TIMEOUT', 'alarm', `超過鎖附時間：${phase === 'A' ? '第一' : '第二'}階段還有 ${left} 顆`, '超過鎖附時間，請盡快完成');
+    alarm('TIMEOUT', 'alarm', `超過鎖附時間：步驟 ${PHASE_STEP[phase]} 還有 ${left} 顆`, '超過鎖附時間，請盡快完成');
   }
 
   function automationFault(code) {
     s.automationFault = code;
     if (code === 'TRAY_STUCK') s.tray = 'STUCK';
     if (cfg.stationEvents) rec('AUTOMATION_FAULT', { phase: 'B' });
-    alarm('AUTOMATION_FAULT', 'fault', `${FAULT_TEXT[code]}，第二階段暫停`, '承盤未下降，請通知班長');
+    alarm('AUTOMATION_FAULT', 'fault', `${FAULT_TEXT[code]}，步驟 3 暫停`, '承盤未下降，請通知班長');
   }
 
   // ── 工具狀態（含致能／鎖定紀錄）────────────
@@ -386,7 +388,7 @@ export function createArmLogic(options = {}) {
           if (left > 0) {
             rec('PHASE_WARNING', { phase: ph });
             const n = Math.ceil(left);
-            alarm('PHASE_WARNING', 'warn', `${ph === 'A' ? '第一' : '第二'}階段剩 ${n} 秒`, `還剩${n}秒`);
+            alarm('PHASE_WARNING', 'warn', `步驟 ${PHASE_STEP[ph]} 剩 ${n} 秒`, `還剩${n}秒`);
           }
         }
         if (!s.timedOut && left <= 0) timeout(ph);
@@ -474,14 +476,14 @@ export function describe(state) {
   switch (state.phase) {
     case 'IDLE': return { step: '—', title: '等待車輛進站', sub: '工具待機', tone: 'muted', tray };
     case 'A': return {
-      step: 'A', title: '第一階段鎖附', tone: 'orange', tray,
-      sub: state.tray === 'UP' ? '下方螺絲（左下、右下）' : `${tray}・請補完第一階段`,
+      step: '1', title: '鎖下方螺絲', tone: 'orange', tray,
+      sub: state.tray === 'UP' ? '左下、右下' : `${tray}・請補完下方螺絲`,
     };
     case 'B': return {
-      step: 'B', title: state.tray === 'LOWERING' ? '承盤下降中' : '等待承盤下降', tone: 'yellow', tray,
-      sub: '第一階段完成・工具已鎖定',
+      step: '2', title: state.tray === 'LOWERING' ? '承盤下降中' : '等待承盤下降', tone: 'yellow', tray,
+      sub: '下方螺絲完成・工具已鎖定',
     };
-    case 'C': return { step: 'C', title: '第二階段鎖附', sub: '上方螺絲（左上、右上）', tone: 'teal', tray };
+    case 'C': return { step: '3', title: '鎖上方螺絲', sub: '左上、右上', tone: 'teal', tray };
     default: return { step: '✓', title: '本車完成', sub: '工具已鎖定，等待下一台', tone: 'green', tray };
   }
 }
