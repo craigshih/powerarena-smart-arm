@@ -1,4 +1,4 @@
-// 會動的師傅（UI 層）：站在高台內緣，依工具位置伸手、彎腰、轉頭；
+// 會動的作業員（UI 層）：站在高台內緣，依工具位置伸手、彎腰、轉頭；
 // 等待時會轉身做別的事；聽到提示時會轉頭看控制器並放開工具。
 //
 //   const op = createOperator({ side: 'L' });
@@ -46,7 +46,7 @@ export function createOperator({ side = 'L', height = 1.75, platformY = 1.42, x 
 
   const root = new THREE.Group();
   root.name = `operator-${side}`;
-  // 車身比兩側高台間距寬，葉子板懸在高台上方（外緣 x = ±0.9675）；師傅站在外側、越過開口伸手，
+  // 車身比兩側高台間距寬，葉子板懸在高台上方（外緣 x = ±0.9675）；作業員站在外側、越過開口伸手，
   // 腿與腰不能進到葉子板裡
   const baseX = x ?? s * 1.09;
   root.position.set(baseX, platformY, z);
@@ -74,7 +74,7 @@ export function createOperator({ side = 'L', height = 1.75, platformY = 1.42, x 
   spine.add(mesh(new THREE.CylinderGeometry(0.187 * k, 0.187 * k, 0.03 * k, 14, 1, true), M.stripe, 0, 0.2 * k, 0));
   spine.add(mesh(new THREE.CylinderGeometry(0.05 * k, 0.055 * k, 0.08 * k, 10), M.skin, 0, 0.6 * k, 0));
   const shoulders = { R: new THREE.Object3D(), L: new THREE.Object3D() };
-  shoulders.R.position.set(-0.2 * k, 0.5 * k, 0); // 本地 −X 是師傅的右手邊（面向 +Z）
+  shoulders.R.position.set(-0.2 * k, 0.5 * k, 0); // 本地 −X 是作業員的右手邊（面向 +Z）
   shoulders.L.position.set(0.2 * k, 0.5 * k, 0);
   spine.add(shoulders.R, shoulders.L);
   for (const sh of Object.values(shoulders)) sh.add(mesh(new THREE.SphereGeometry(0.065 * k, 12, 10), M.shirt));

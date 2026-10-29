@@ -7,7 +7,7 @@
 //   arm.update(dt, time);                        // 每幀呼叫：平滑移動、燈號閃爍
 //
 // 結構：台車（沿軌道 z 移動）→ 垂直柱 → J1 旋轉 → 第一節臂 → J2 旋轉 → 第二節臂
-//       → 平衡器（垂直伸縮）→ 鎖附工具。手臂螢幕裝在平衡器外管下端，跟著工具移動、面向師傅。
+//       → 平衡器（垂直伸縮）→ 鎖附工具。手臂螢幕裝在平衡器外管下端，跟著工具移動、面向作業員。
 //       控制器固定在軌道吊架上，不跟著工具晃。
 
 import * as THREE from 'three';
@@ -16,7 +16,7 @@ import { P, SEQUENCE, armMount, zoneById } from './arm-params.js';
 import { signalsFor, describe, PHASE_STEP } from './arm-logic.js';
 
 export const PRINCIPLES = {
-  1: { short: '不增加動作', title: '不違反人類自然行為、不增加成本', desc: '不能讓師傅多按按鈕，也不能讓他多看一個地方。' },
+  1: { short: '不增加動作', title: '不違反人類自然行為、不增加成本', desc: '不能讓作業員多按按鈕，也不能讓他多看一個地方。' },
   2: { short: '從工具思考', title: '從工具思考，而非作業流程', desc: '防錯要靠工具與控制器本身做到。' },
   3: { short: '妥善率', title: '妥善率最重要', desc: '系統能穩定運作、有人負責，故障時有對策。' },
 };
@@ -27,9 +27,9 @@ export const ARM_PARTS = [
     key: 'enable', n: 1, title: '工具內建智能鎖定', tag: '智能鎖定', principles: [1, 2],
     short: '承盤沒降，工具不轉', beforeShort: '工具隨時能轉',
     spec: ['controllerPsets', 'toolTorqueRange'],
-    before: '工具隨時都能轉，靠師傅自己記得等承盤。',
+    before: '工具隨時都能轉，靠作業員自己記得等承盤。',
     what: '控制器讀承盤 PLC 的「下降完成」訊號。步驟 1 只開放下方螺絲，鎖滿就自動鎖住工具；承盤降到底才開放步驟 3 的上方螺絲。',
-    why: '師傅照原本的肌肉記憶作業，不用多按按鈕；能不能鎖由工具決定，而不是靠人記得。',
+    why: '作業員照原本的肌肉記憶作業，不用多按按鈕；能不能鎖由工具決定，而不是靠人記得。',
     fault: '控制器斷線時工具預設鎖住（失效即安全）；班長可用鑰匙切到降級模式。',
   },
   {
@@ -47,7 +47,7 @@ export const ARM_PARTS = [
     spec: ['ringSignals'],
     before: '握把上沒有任何燈號或震動。',
     what: '綠＝可鎖附、藍＝鎖附中、黃＝已鎖定或位置不對、紅閃＝錯誤；錯誤時握把震動。',
-    why: '提示出現在師傅手上、本來就在看的位置，不用多看一個地方。這是電動鎖附工具的內建功能，不是加裝在工具上的外掛裝置。',
+    why: '提示出現在作業員手上、本來就在看的位置，不用多看一個地方。這是電動鎖附工具的內建功能，不是加裝在工具上的外掛裝置。',
     fault: 'LED 故障不影響連鎖；語音與三色燈仍會提示。',
   },
   {
@@ -56,7 +56,7 @@ export const ARM_PARTS = [
     spec: ['speakerLevel'],
     before: '沒有語音、沒有工位燈號。',
     what: '控制器固定在軌道吊架上，不在工具上，不會晃。喇叭播「降前鎖附！降前鎖附！」等語音，三色燈同步工位狀態。',
-    why: '師傅等待時不一定看前方，所以以聲音為主、燈號為輔；要看細節時再看手臂螢幕。',
+    why: '作業員等待時不一定看前方，所以以聲音為主、燈號為輔；要看細節時再看手臂螢幕。',
     fault: '每班開工自動自我檢查（燈號＋試播語音），異常即通知維護。',
   },
   {
@@ -65,7 +65,7 @@ export const ARM_PARTS = [
     spec: ['encoderRes', 'encoderZoneTol'],
     before: '不知道工具停在哪個區域。',
     what: '台車、兩個旋轉關節與平衡器升降都裝編碼器，控制器算出工具停在哪個區域。順序錯了直接鎖住工具，不必靠攝影機。',
-    why: '師傅不用多做任何動作；裝在手臂結構上，不在工具上。風險在妥善率：需要校正，車輛若隨輸送線移動還要補償位置。',
+    why: '作業員不用多做任何動作；裝在手臂結構上，不在工具上。風險在妥善率：需要校正，車輛若隨輸送線移動還要補償位置。',
     fault: '編碼器故障時只關閉順序檢查，承盤連鎖照常運作，不讓產線停下來。',
   },
   {
@@ -74,7 +74,7 @@ export const ARM_PARTS = [
     spec: ['plcSignals', 'trayFaultTimeout'],
     before: '工具和承盤沒有連線，各做各的。',
     what: '控制器接承盤的「開始下降」「下降完成」數位訊號。承盤開始下降 8 秒內沒收到「下降完成」，判系統異常 A：承盤異常。',
-    why: '直接用設備本身的訊號判斷時機，不靠師傅或攝影機推測。',
+    why: '直接用設備本身的訊號判斷時機，不靠作業員或攝影機推測。',
     fault: '訊號遺失 → 步驟 3 維持鎖定並通知班長，紀錄歸在系統異常 A：承盤異常。',
   },
   {
@@ -91,8 +91,8 @@ export const ARM_PARTS = [
     short: '低頭就看到狀態與修正方式', beforeShort: '沒有螢幕',
     spec: ['screenSize', 'screenBrightness', 'screenRating', 'screenDistance'],
     before: '沒有螢幕，靠記憶與班長口頭提醒。',
-    what: '小螢幕裝在平衡器外管下端，跟著工具移動、面向師傅：大字顯示目前步驟、這一側每顆螺絲的狀態，錯誤時整面變色並寫出怎麼修正。',
-    why: '師傅低頭看工具時螢幕就在同一個視線裡，不用另外看站旁；錯了當場看得到是哪一顆、要怎麼處置。',
+    what: '小螢幕裝在平衡器外管下端，跟著工具移動、面向作業員：大字顯示目前步驟、這一側每顆螺絲的狀態，錯誤時整面變色並寫出怎麼修正。',
+    why: '作業員低頭看工具時螢幕就在同一個視線裡，不用另外看站旁；錯了當場看得到是哪一顆、要怎麼處置。',
     fault: '裝在手臂外管上、不在工具本體，選用工業級防震螢幕。螢幕故障不影響連鎖，語音與握把燈仍會提示。業主曾否決「在鎖附機器上加裝裝置」，裝在外管上是否可接受需再確認。',
   },
 ];
@@ -100,7 +100,7 @@ export const ARM_PARTS = [
 const BASE_PARTS = {
   trolley: { title: '軌道台車', rows: [['作用', '沿上方工具軌道前後移動，讓工具跟著車位'], ['來源', '沿用工廠原有軌道與吊點']] },
   arm: { title: '水平臂（兩節）', rows: [['作用', '水平方向的兩個旋轉關節，讓工具到達兩側鎖附區域'], ['長度', `${P.link1.v} m ＋ ${P.link2.v} m（假設）`]] },
-  balancer: { title: '平衡器', rows: [['作用', '抵銷工具重量，師傅只需輕推即可上下'], ['來源', '工廠原有平衡器']] },
+  balancer: { title: '平衡器', rows: [['作用', '抵銷工具重量，作業員只需輕推即可上下'], ['來源', '工廠原有平衡器']] },
 };
 
 // ── 手臂螢幕的畫面 ─────────────────────────────
@@ -348,7 +348,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   wrist.add(tagPart(encZ, 'encoder'));
   encoders.push(encZ);
 
-  // 手臂螢幕：外管下端的支架，面向外側（師傅站的那一邊），略往上仰
+  // 手臂螢幕：外管下端的支架，面向外側（作業員站的那一邊），略往上仰
   const scr = { canvas: null, ctx: null, tex: null, key: '' };
   const display = new THREE.Group();
   display.position.set(s * 0.06, -0.03 - tube + 0.07, 0);
@@ -382,9 +382,9 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   toolBody.add(cyl(0.032, 0.07, M.dark, 0, 0.115, 0));
   toolBody.add(cyl(0.036, 0.17, M.body, 0, 0.275, 0));
   toolBody.add(cyl(0.031, 0.02, M.yellow, 0, 0.35, 0));
-  // 側握把：沿車身前後方向、朝師傅右手那一側。螺絲在引擎室開口下方，
-  // 握把若朝外側（師傅那一邊）會插進葉子板，師傅的手也會跟著穿進車身
-  const hz = -s; // 左側師傅面向 −X，右手在 −Z；右側相反
+  // 側握把：沿車身前後方向、朝作業員右手那一側。螺絲在引擎室開口下方，
+  // 握把若朝外側（作業員那一邊）會插進葉子板，作業員的手也會跟著穿進車身
+  const hz = -s; // 左側作業員面向 −X，右手在 −Z；右側相反
   toolBody.add(box(0.026, 0.024, 0.12, M.body, 0, 0.3, hz * 0.09));
   toolBody.add(box(0.032, 0.13, 0.026, M.body, 0, 0.25, hz * 0.15));
   toolBody.add(box(0.016, 0.03, 0.012, M.trigger, s * 0.02, 0.27, hz * 0.15));
@@ -402,7 +402,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
 
   // ── 控制器（固定在軌道吊架，不跟工具移動）──
   const ctrl = new THREE.Group();
-  ctrl.position.set(s * 0.17, 0, -0.25); // 師傅身後，不擋視線
+  ctrl.position.set(s * 0.17, 0, -0.25); // 作業員身後，不擋視線
   root.add(ctrl);
   const cabY = -0.62;
   const cab = new THREE.Group();
@@ -587,7 +587,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     return { target, offset };
   }
 
-  // 握把、工具頂端、控制器燈號的世界座標（給師傅模型伸手與轉頭用）
+  // 握把、工具頂端、控制器燈號的世界座標（給作業員模型伸手與轉頭用）
   const getGrip = (t = new THREE.Vector3()) => tool.localToWorld(t.set(0, 0.29, -s * 0.15)); // 握在側握把上段
   const getToolTop = (t = new THREE.Vector3()) => tool.localToWorld(t.set(0, 0.33, 0));
   const getControllerPos = (t = new THREE.Vector3()) => ctrl.localToWorld(t.set(0.09, cabY + 0.27, 0));

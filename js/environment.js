@@ -1,6 +1,6 @@
 // 工站環境（UI 層）：直接使用場域模型（powerarena-station-twin）的 buildStation，
 // 所有 3D 畫面的高台、車輛、引擎、承盤、四個螺絲孔位、滑軌、吊架與攝影機都和場域模型一致。
-// 場域模型裡的靜態作業員與舊式懸吊工具會藏起來，改由會動的師傅與改良版手臂取代。
+// 場域模型裡的靜態作業員與舊式懸吊工具會藏起來，改由會動的作業員與改良版手臂取代。
 import * as THREE from 'three';
 import { buildStation } from './twin/scene.js';
 import { PHASE_COLOR } from './twin/params.js';
@@ -31,7 +31,7 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
     }
   }
 
-  // 拿掉打開的引擎蓋：師傅的手會穿過它，不符合現場（twin 的複製檔不改，在這裡藏起來）
+  // 拿掉打開的引擎蓋：作業員的手會穿過它，不符合現場（twin 的複製檔不改，在這裡藏起來）
   station.layers.vehicle.traverse((o) => { if (o.isGroup && Math.abs(o.rotation.x + 1.2) < 1e-6) o.visible = false; });
   // 散熱器外框、螺絲支架（鋼材）和深色本體有共面的面，會互相閃爍出鋸齒狀殘影；讓鋼材略為往前畫
   station.layers.vehicle.traverse((o) => {
@@ -84,7 +84,7 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
   };
 }
 
-// 廠房背景：頂燈、鋼柱、牆面、地坪與遠處的其他工站，讓「師傅視角」看起來像真的車廠。
+// 廠房背景：頂燈、鋼柱、牆面、地坪與遠處的其他工站，讓「作業員視角」看起來像真的車廠。
 // 只有裝飾，不影響座標與互動。
 export function addFactoryBackdrop(root) {
   const g = new THREE.Group();

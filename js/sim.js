@@ -1,5 +1,5 @@
 // 「現行 vs IoT」實境對比（UI 層）。
-// 同一位師傅、同一段動作同時播放兩次：左邊是現行手臂（工具隨時能轉、沒有回饋與紀錄），
+// 同一位作業員、同一段動作同時播放兩次：左邊是現行手臂（工具隨時能轉、沒有回饋與紀錄），
 // 右邊是連上 IoT 的改良手臂（狀態機控制致能與鎖定）。
 // 現行手臂沒有自己的狀態機：IoT 狀態機攔下或判定的每一件事，在現行手臂上就是「沒被發現的問題」。
 
@@ -54,7 +54,7 @@ export function createSim(deps) {
   const worlds = { old: makeWorld(true), iot: makeWorld(false) };
   const fx = createAlertFx(worlds.iot.scene); // 只有 IoT 手臂有示警；現行手臂什麼都沒有
   const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 60);
-  // 從師傅肩膀後方看：師傅的手、工具、手臂螢幕與螺絲都在畫面裡
+  // 從作業員肩膀後方看：作業員的手、工具、手臂螢幕與螺絲都在畫面裡
   const SIDE_CAM = {
     L: { pos: [1.45, 3.65, 4.0], tgt: [0.8, 2.55, 1.5] },
     R: { pos: [-1.45, 3.65, 4.0], tgt: [-0.8, 2.55, 1.5] },

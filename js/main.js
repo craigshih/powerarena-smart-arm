@@ -63,12 +63,12 @@ controls.maxDistance = 16;
 const env = buildEnvironment(scene);
 const arms = { L: createSmartArm({ side: 'L', labels: true }), R: createSmartArm({ side: 'R', labels: false }) };
 scene.add(arms.L, arms.R);
-// 會動的師傅：依工具位置伸手、彎腰；等待時轉身做別的事；聽到提示會轉頭
+// 會動的作業員：依工具位置伸手、彎腰；等待時轉身做別的事；聽到提示會轉頭
 const ops = { L: createOperator({ side: 'L' }), R: createOperator({ side: 'R' }) };
 scene.add(ops.L, ops.R);
 const opMeshes = [];
 for (const side of ['L', 'R']) {
-  const info = { title: side === 'L' ? '師傅（左側）' : '師傅（右側）', id: 'env-operator', rows: [
+  const info = { title: side === 'L' ? '左側作業員' : '右側作業員', id: 'env-operator', rows: [
     ['身高', `1.75 m（業主建議標準）`],
     ['動作', '和現在一樣：拿工具、對螺絲、扣扳機，不多按任何按鈕'],
     ['等待時', '會轉身做別的事、不一定看前方，所以提示以聲音與工具本身為主'],
@@ -84,7 +84,7 @@ const PRESETS = {
   orbit: { pos: [4.3, 4.9, 2.9], tgt: [0.1, 2.45, 1.45], fov: 42 },
   armL: { pos: [-0.9, 3.9, 3.3], tgt: [0.75, 2.85, 1.5], fov: 42 },
   armR: { pos: [0.9, 3.9, 3.3], tgt: [-0.75, 2.85, 1.5], fov: 42 },
-  // 從師傅肩膀後方看：看得到手臂螢幕正面、握把燈與螺絲
+  // 從作業員肩膀後方看：看得到手臂螢幕正面、握把燈與螺絲
   toolL: { pos: [1.55, 4.15, 2.85], tgt: [0.62, 2.55, 1.5], fov: 40 },
   toolR: { pos: [-1.55, 4.15, 2.85], tgt: [-0.62, 2.55, 1.5], fov: 40 },
   top: { pos: [0.01, 7.8, 1.7], tgt: [0, 2, 1.6], fov: 40 },
@@ -390,7 +390,7 @@ function renderTimeline() {
   $('#t-time').textContent = `${fmtT(t)} / ${fmtT(duration)}`;
 }
 
-// ── 右側：即時狀態（每側一塊：手臂螢幕畫面＋聲音＋師傅處置）──
+// ── 右側：即時狀態（每側一塊：手臂螢幕畫面＋聲音＋作業員處置）──
 const sideBlocks = {};
 function buildSideCards() {
   $('#side-cards').innerHTML = ['L', 'R'].map((side) => `
@@ -657,18 +657,18 @@ function renderTrace() {
   let head;
   let body;
   if (trace.mode === 'bolt') {
-    head = ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '扭力 N·m', '角度 °', '結果', '錯誤分類', '說明'];
+    head = ['時間', 'VIN', '工位', '側', '作業員', '螺絲位置', '扭力 N·m', '角度 °', '結果', '錯誤分類', '說明'];
     body = shown.map((r) => `<tr>
       <td data-label="時間">${fmtTs(r.ts)}</td><td data-label="VIN" class="full"><code>${r.vin}</code>${liveChip(r.vin)}</td>
-      <td data-label="工位">${r.station}</td><td data-label="側">${r.side}</td><td data-label="師傅">${r.operator}</td>
+      <td data-label="工位">${r.station}</td><td data-label="側">${r.side}</td><td data-label="作業員">${r.operator}</td>
       <td data-label="螺絲位置">${where(r)}</td><td data-label="扭力 N·m" class="n">${r.torqueNm}</td><td data-label="角度 °" class="n">${r.angleDeg}</td>
       <td data-label="結果"><span class="res res-${r.result}">${RESULT_LABEL[r.result]}</span></td>
       <td data-label="錯誤分類">${catHtml(r.cats)}</td><td data-label="說明" class="wrap full">${esc(r.notes.join('；')) || '—'}</td></tr>`).join('');
   } else {
-    head = ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '步驟', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
+    head = ['時間', 'VIN', '工位', '側', '作業員', '螺絲位置', '步驟', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
     body = shown.map((r) => `<tr>
       <td data-label="時間">${fmtTs(r.ts)}</td><td data-label="VIN" class="full"><code>${r.vin}</code>${liveChip(r.vin)}</td>
-      <td data-label="工位">${r.station}</td><td data-label="側">${r.side}</td><td data-label="師傅">${r.operator}</td>
+      <td data-label="工位">${r.station}</td><td data-label="側">${r.side}</td><td data-label="作業員">${r.operator}</td>
       <td data-label="螺絲位置">${where(r)}</td><td data-label="步驟">${PHASE_STEP[r.phase] ?? '—'}</td>
       <td data-label="事件">${EVENT_TYPES[r.type].label}<br><code>${r.type}</code></td>
       <td data-label="扭力 N·m" class="n">${r.torqueNm ?? '—'}</td><td data-label="角度 °" class="n">${r.angleDeg ?? '—'}</td>
@@ -757,8 +757,8 @@ $('#f-pdf').addEventListener('click', async () => {
       f.cat && (f.cat === 'ANY' ? '只看有錯誤' : CATEGORY[f.cat])].filter(Boolean).join('、') || '全部';
     const cat = (c) => `<span style="display:inline-block;padding:0 6px;border-radius:8px;border:1px solid #999;font-size:9px;margin-right:2px">${CATEGORY[c]}</span>`;
     const head = bolt
-      ? ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '扭力 N·m', '角度 °', '結果', '錯誤分類', '說明']
-      : ['時間', 'VIN', '工位', '側', '師傅', '螺絲位置', '步驟', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
+      ? ['時間', 'VIN', '工位', '側', '作業員', '螺絲位置', '扭力 N·m', '角度 °', '結果', '錯誤分類', '說明']
+      : ['時間', 'VIN', '工位', '側', '作業員', '螺絲位置', '步驟', '事件', '扭力 N·m', '角度 °', '結果', '錯誤分類'];
     const body = used.map((r) => {
       const cells = bolt
         ? [fmtTs(r.ts), r.vin + (liveVins.has(r.vin) ? '＊' : ''), r.station, r.side, r.operator, where(r), r.torqueNm, r.angleDeg, RESULT_LABEL[r.result], [...r.cats].map(cat).join('') || '—', esc(r.notes.join('；')) || '—']

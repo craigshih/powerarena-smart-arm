@@ -1,6 +1,6 @@
 // 「廠房情境」頁（UI 層）：場域模型（powerarena-station-twin）的情境站，裝上改良版手臂。
 // 時間軸、1-2-3 流程條、三支攝影機子畫面與標註框都沿用場域模型的做法；
-// 懸吊工具換成改良版手臂與會動的師傅，手臂狀態由同一套狀態機依標準流程推進。
+// 懸吊工具換成改良版手臂與會動的作業員，手臂狀態由同一套狀態機依標準流程推進。
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -157,7 +157,7 @@ export function createStationView(deps) {
   const events = { L: [], R: [] };
   for (const side of ['L', 'R']) {
     const ev = events[side];
-    ev.push({ t: 1, type: 'cycle:start', trayDueAt: T.checkpoint, vin: 'TWPA2026S00000001', operator: side === 'L' ? 'A1024' : 'A1037' });
+    ev.push({ t: 1, type: 'cycle:start', trayDueAt: T.checkpoint, vin: 'TWPA2026S00000001', operator: side === 'L' ? 'OP-001' : 'OP-002' });
     for (const [a, b, z] of plans[side]) {
       ev.push({ t: a, type: 'tool:position', zoneId: z.id });
       ev.push({ t: a + 3, type: 'tool:trigger' });

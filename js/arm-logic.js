@@ -3,7 +3,7 @@
 // 一側（L 或 R）一個實例。輸入事件（皆帶 t，單位秒，從本車進站起算）：
 //   cycle:start   { vin, operator, trayDueAt }   車輛進站，開始 A 階段
 //   tool:position { zoneId | null }              關節編碼器回報工具所在區域（選配）
-//   tool:trigger  { zoneId? }                    師傅按下扳機
+//   tool:trigger  { zoneId? }                    作業員按下扳機
 //   tool:torque   { torqueNm, angleDeg }         工具回報這一顆的扭力與角度
 //   tray:lowering / tray:lowered                 承盤 PLC 訊號
 //   tool:fault    { code }  /  tool:recover      扭矩槍訊號中斷等工具異常與恢復

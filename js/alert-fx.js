@@ -5,7 +5,7 @@
 //   扭力不足    紅   ✕   NG 那顆快速脈動，標籤寫實際扭力與下限
 //   即將超時    黃   ⏱   下一顆外圍倒數圈
 //   超過時間    橘紅 ⏱   同上，圈變滿紅
-//   承盤異常    紫   ⚙   承盤整個框起來閃紫，標示「不是師傅的錯」
+//   承盤異常    紫   ⚙   承盤整個框起來閃紫，標示「不是作業員的錯」
 //   訊號中斷    橘   ⚡   工具外圍光暈
 //   正常        綠   ✓   每鎖好一顆冒出綠勾與扭力值，完成時「本車完成」
 //
@@ -295,7 +295,7 @@ export function createAlertFx(scene) {
       trayBox.visible = true;
       trayLabel.obj.position.copy(trayBox.position).add(_v.set(0, 0.35, 0.6));
       if (trayMode === 'automation') {
-        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '系統異常 A：承盤異常', '不是師傅的錯，等班長復歸'), 'fx-automation');
+        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '系統異常 A：承盤異常', '不是作業員的錯，等班長復歸'), 'fx-automation');
       } else {
         setLabel(trayLabel, labelHtml({ icon: 'stop' }, '承盤未下降', '上方螺絲不開放'), 'fx-warn');
       }

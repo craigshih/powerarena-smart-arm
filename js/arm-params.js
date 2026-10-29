@@ -63,7 +63,7 @@ export const P = {
   screenSize: p(10.1, '吋', '手臂螢幕尺寸', SRC.ASM, 'assumed', '工業級觸控面板，只顯示不需操作'),
   screenBrightness: p(1000, 'nits', '螢幕亮度', SRC.ASM, 'assumed', '廠房頂燈下仍看得清楚'),
   screenRating: p('IP65・防震', '', '防護等級', SRC.ASM, 'assumed', '油污、粉塵與手臂晃動'),
-  screenDistance: p(0.5, 'm', '師傅眼睛到螢幕距離', SRC.ASM, 'assumed', '彎腰鎖附時'),
+  screenDistance: p(0.5, 'm', '作業員眼睛到螢幕距離', SRC.ASM, 'assumed', '彎腰鎖附時'),
   screenMount: p('平衡器外管下端', '', '安裝位置', SRC.ASM, 'assumed', '跟著工具移動，不在工具本體'),
 
   // ── 追溯欄位 ──────────────────────────────

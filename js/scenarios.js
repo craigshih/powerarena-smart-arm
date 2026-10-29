@@ -20,7 +20,7 @@ export function rng(seed = 1) {
   };
 }
 
-// 一側師傅的動作，依序往後排時間
+// 一側作業員的動作，依序往後排時間
 class Track {
   constructor(side, steps, ctx, t = 0) {
     Object.assign(this, { side, steps, ctx, t });
@@ -79,7 +79,7 @@ function base(ctx, variant) {
   all(0.5, { ev: { type: 'cycle:start', trayDueAt: TRAY_DUE } });
 
   // 右側：步驟 1 鎖右下，之後等承盤
-  R.at(2).bolt('Z1R', 0).rest().note('右下完成，工具自動鎖住，師傅放下工具等承盤');
+  R.at(2).bolt('Z1R', 0).rest().note('右下完成，工具自動鎖住，作業員放下工具等承盤');
 
   // 左側依情境變化
   variant(L, all, ctx);
@@ -118,8 +118,8 @@ export const SCENARIOS = [
     expect: '工具不轉、紅燈閃、廣播「降前鎖附！」',
     build: (ctx) => base(ctx, (L) => {
       normalA(L);
-      L.at(13).note('等承盤時，師傅順手想先鎖左上螺絲').move('Z2L', 0).trigger();
-      L.wait(1.4).note('聽到「降前鎖附！」，握把閃紅並震動；師傅放開扳機，放回工具').rest();
+      L.at(13).note('等承盤時，作業員順手想先鎖左上螺絲').move('Z2L', 0).trigger();
+      L.wait(1.4).note('聽到「降前鎖附！」，握把閃紅並震動；作業員放開扳機，放回工具').rest();
     }),
   },
   {
@@ -129,7 +129,7 @@ export const SCENARIOS = [
     expect: '判 NG 不計數，原地重鎖。',
     build: (ctx) => base(ctx, (L) => {
       L.at(1.5).note('套筒沒有完全咬合（假設原因），扭力只到 52 N·m', 2.6).bolt('Z1L', 0, { torque: 52, angle: 41 });
-      L.note('聽到「扭力不足，請重鎖」；師傅調整套筒，原地再扣一次扳機').retry('Z1L', 66);
+      L.note('聽到「扭力不足，請重鎖」；作業員調整套筒，原地再扣一次扳機').retry('Z1L', 66);
       L.rest();
     }),
   },
@@ -139,7 +139,7 @@ export const SCENARIOS = [
     short: '左下對不準，拖過檢查點',
     expect: '剩 15 秒預警，超時記錄，不停線。',
     build: (ctx) => base(ctx, (L) => {
-      L.at(1.5).move('Z1L', 0).note('左下螺絲套筒對不上，師傅反覆調整');
+      L.at(1.5).move('Z1L', 0).note('左下螺絲套筒對不上，作業員反覆調整');
       L.wait(8).note('聽到「還剩 15 秒」，加快調整');
       L.wait(13.5).trigger().torque('Z1L');
       L.note('聽到「超過鎖附時間」：照常補完，系統記錄超時給班長追蹤', -1.2).wait(1).rest();
@@ -160,10 +160,10 @@ export const SCENARIOS = [
         };
       }
       return base(ctx, (L) => {
-        L.at(1.5).note('師傅憑習慣先去鎖左上螺絲').move('Z2L', 0);
+        L.at(1.5).note('作業員憑習慣先去鎖左上螺絲').move('Z2L', 0);
         if (ctx.encoder) {
           L.trigger().torque('Z2L');
-          L.wait(0.4).note('工具不轉、握把黃燈閃；廣播「錯誤步驟，請先鎖左下螺絲」，師傅改鎖左下');
+          L.wait(0.4).note('工具不轉、握把黃燈閃；廣播「錯誤步驟，請先鎖左下螺絲」，作業員改鎖左下');
           L.wait(0.2).bolt('Z1L', 0).rest();
         } else {
           L.trigger().torque('Z1L');
@@ -185,7 +185,7 @@ export const SCENARIOS = [
         normalA(L).note('左下完成，工具已鎖定，等承盤');
         all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
         all(TRAY_DUE + 2, { trayStop: true });
-        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常 A：承盤異常」。師傅照常等待；班長收到通知到場' });
+        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常 A：承盤異常」。作業員照常等待；班長收到通知到場' });
         all(TRAY_DUE + 14, { note: '班長確認承盤卡住，按下承盤復歸' });
         all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
         all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
@@ -203,7 +203,7 @@ export const SCENARIOS = [
       L.note('工具與控制器通訊中斷（假設：接頭鬆脫），工具立刻停轉並鎖住，這一顆不計數', 0.7);
       L.wait(3).note('班長重新插好接頭，控制器自我檢查通過');
       L.push({ ev: { type: 'tool:recover' } }, 0.3);
-      L.wait(1).note('師傅重鎖這一顆').trigger().torque('Z1L');
+      L.wait(1).note('作業員重鎖這一顆').trigger().torque('Z1L');
       L.wait(1.4).rest();
     }),
   },
@@ -219,7 +219,7 @@ export function createRun(scenario, opts = {}) {
     spec: SPEC,
     vin: 'TWPA2026A00012345',
     epoch: Date.now(),
-    operators: { L: 'A1024', R: 'A1037' },
+    operators: { L: 'OP-001', R: 'OP-002' },
     seed: 7,
     ...opts,
   };
@@ -309,7 +309,7 @@ export function generateHistory({ count = 36, start = Date.parse('2026-10-21T08:
   const r = rng(2026);
   const plan = ['normal', 'normal', 'normal', 'ng', 'normal', 'early', 'normal', 'normal', 'timeout', 'normal', 'sequence', 'normal',
     'normal', 'early', 'normal', 'tool', 'normal', 'normal', 'ng', 'normal', 'normal', 'automation', 'normal', 'early'];
-  const shifts = [{ L: 'A1024', R: 'A1037' }, { L: 'B2011', R: 'B2056' }];
+  const shifts = [{ L: 'OP-001', R: 'OP-002' }, { L: 'OP-003', R: 'OP-004' }];
   const records = [];
   for (let n = 0; n < count; n++) {
     const id = plan[n % plan.length];
