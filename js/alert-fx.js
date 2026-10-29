@@ -295,7 +295,7 @@ export function createAlertFx(scene) {
       trayBox.visible = true;
       trayLabel.obj.position.copy(trayBox.position).add(_v.set(0, 0.35, 0.6));
       if (trayMode === 'automation') {
-        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '系統異常 A：承盤異常', '不是作業員的錯，等現場主管復歸'), 'fx-automation');
+        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '系統異常：承盤異常', '不是作業員的錯，等現場主管復歸'), 'fx-automation');
       } else {
         setLabel(trayLabel, labelHtml({ icon: 'stop' }, '承盤未下降', '上方螺絲不開放'), 'fx-warn');
       }

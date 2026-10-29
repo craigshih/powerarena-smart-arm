@@ -84,7 +84,7 @@ function base(ctx, variant) {
   // 左側依情境變化
   variant(L, all, ctx);
 
-  // 承盤（系統異常 A 承盤異常情境自行處理）
+  // 承盤（承盤異常情境自行處理）
   if (!ctx.customTray) {
     all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
     all(TRAY_DUE + 4, { ev: { type: 'tray:lowered' } });
@@ -101,6 +101,7 @@ function base(ctx, variant) {
 
 const normalA = (L) => L.at(1.5).bolt('Z1L', 0).rest();
 
+// 順序與主管端模組的情境下拉選單一致
 export const SCENARIOS = [
   {
     id: 'normal',
@@ -120,17 +121,6 @@ export const SCENARIOS = [
       normalA(L);
       L.at(13).note('等承盤時，作業員順手想先鎖左上螺絲').move('Z2L', 0).trigger();
       L.wait(1.4).note('聽到「降前鎖附！」，握把閃紅並震動；作業員放開扳機，放回工具').rest();
-    }),
-  },
-  {
-    id: 'ng',
-    title: '扭力不足',
-    short: '左下只鎖到 52 N·m',
-    expect: '判 NG 不計數，原地重鎖。',
-    build: (ctx) => base(ctx, (L) => {
-      L.at(1.5).note('套筒沒有完全咬合（假設原因），扭力只到 52 N·m', 2.6).bolt('Z1L', 0, { torque: 52, angle: 41 });
-      L.note('聽到「扭力不足，請重鎖」；作業員調整套筒，原地再扣一次扳機').retry('Z1L', 66);
-      L.rest();
     }),
   },
   {
@@ -174,27 +164,19 @@ export const SCENARIOS = [
     },
   },
   {
-    id: 'automation',
-    title: '系統異常 A：承盤異常',
-    short: '承盤下降到一半卡住',
-    expect: '判承盤異常，上方不開放，通知現場主管。',
-    build: (ctx) => {
-      ctx.customTray = true;
-      ctx.cStart = TRAY_DUE + 17.5;
-      return base(ctx, (L, all) => {
-        normalA(L).note('左下完成，工具已鎖定，等承盤');
-        all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
-        all(TRAY_DUE + 2, { trayStop: true });
-        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常 A：承盤異常」。作業員照常等待；現場主管收到通知到場' });
-        all(TRAY_DUE + 14, { note: '現場主管確認承盤卡住，按下承盤復歸' });
-        all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
-        all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
-      });
-    },
+    id: 'ng',
+    title: '扭力不足',
+    short: '左下只鎖到 52 N·m',
+    expect: '判 NG 不計數，原地重鎖。',
+    build: (ctx) => base(ctx, (L) => {
+      L.at(1.5).note('套筒沒有完全咬合（假設原因），扭力只到 52 N·m', 2.6).bolt('Z1L', 0, { torque: 52, angle: 41 });
+      L.note('聽到「扭力不足，請重鎖」；作業員調整套筒，原地再扣一次扳機').retry('Z1L', 66);
+      L.rest();
+    }),
   },
   {
     id: 'tool',
-    title: '系統異常 B：扭矩槍訊號中斷',
+    title: '系統異常 A：扭矩槍訊號中斷',
     short: '鎖附中扭矩槍訊號中斷',
     expect: '立刻停轉鎖住，恢復後重鎖這一顆。',
     build: (ctx) => base(ctx, (L) => {
@@ -206,6 +188,25 @@ export const SCENARIOS = [
       L.wait(1).note('作業員重鎖這一顆').trigger().torque('Z1L');
       L.wait(1.4).rest();
     }),
+  },
+  {
+    id: 'automation',
+    title: '系統異常：承盤異常',
+    short: '承盤下降到一半卡住',
+    expect: '判承盤異常，上方不開放，通知現場主管。',
+    build: (ctx) => {
+      ctx.customTray = true;
+      ctx.cStart = TRAY_DUE + 17.5;
+      return base(ctx, (L, all) => {
+        normalA(L).note('左下完成，工具已鎖定，等承盤');
+        all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
+        all(TRAY_DUE + 2, { trayStop: true });
+        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常：承盤異常」。作業員照常等待；現場主管收到通知到場' });
+        all(TRAY_DUE + 14, { note: '現場主管確認承盤卡住，按下承盤復歸' });
+        all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
+        all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
+      });
+    },
   },
 ];
 

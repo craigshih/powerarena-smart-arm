@@ -16,8 +16,8 @@
 import { P, SEQUENCE, SPEC, zoneById } from './arm-params.js';
 
 export const CATEGORY = {
-  AUTOMATION: '系統異常 A：承盤異常',
-  TOOL: '系統異常 B：扭矩槍訊號中斷',
+  AUTOMATION: '系統異常：承盤異常',
+  TOOL: '系統異常 A：扭矩槍訊號中斷',
   OPERATION: '作業異常',
 };
 
@@ -353,8 +353,8 @@ export function createArmLogic(options = {}) {
       s.attempt = null;
       s.fault = e.code || 'COMM_LOST';
       rec('TOOL_FAULT', { zoneId: aborted?.zoneId ?? '', boltIndex: aborted?.boltIndex ?? null });
-      const comm = s.fault === 'COMM_LOST'; // 系統異常 B 專指扭矩槍訊號中斷，其他工具問題照舊叫工具異常
-      alarm('TOOL_FAULT', 'fault', `${comm ? '系統異常 B' : '工具異常'}：${FAULT_TEXT[s.fault] ?? s.fault}`, comm ? '扭矩槍訊號中斷，請通知現場主管' : '工具異常，請通知現場主管');
+      const comm = s.fault === 'COMM_LOST'; // 系統異常 A 專指扭矩槍訊號中斷，其他工具問題照舊叫工具異常
+      alarm('TOOL_FAULT', 'fault', `${comm ? '系統異常 A' : '工具異常'}：${FAULT_TEXT[s.fault] ?? s.fault}`, comm ? '扭矩槍訊號中斷，請通知現場主管' : '工具異常，請通知現場主管');
     },
 
     'tool:recover'() {

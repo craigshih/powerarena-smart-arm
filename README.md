@@ -16,7 +16,7 @@ python3 -m http.server 8795
 
 ## 畫面
 
-導覽列四大項，所在大項會展開子項。整體以 mock-up 為主，文字精簡，細節口頭說明。畫面用詞與同事的主管端模組統一：降前鎖附、扭力不足、錯誤步驟、系統異常 A：承盤異常、系統異常 B：扭矩槍訊號中斷、智能鎖定、機器手臂 L／R、作業員（左側／右側作業員，編號 OP-001 格式）、現場主管。
+導覽列四大項，所在大項會展開子項。整體以 mock-up 為主，文字精簡，細節口頭說明。畫面用詞與同事的主管端模組統一：降前鎖附、扭力不足、錯誤步驟、系統異常：承盤異常、系統異常 A：扭矩槍訊號中斷、智能鎖定、機器手臂 L／R、作業員（左側／右側作業員，編號 OP-001 格式）、現場主管。情境順序與主管端下拉選單一致；系統異常 A 是扭矩槍訊號中斷，承盤異常在主管端清單沒有代號，系統異常 B（視覺與 IoT 不一致）只在主管端。
 
 - **廠房情境**（預設首頁）：場域模型（powerarena-station-twin）的情境站：3 分鐘標準作業時間軸、1-2-3 流程條、三支攝影機子畫面與標註框、視角與圖層，懸吊工具換成改良版手臂與會動的作業員。
 - **手臂**
@@ -56,7 +56,7 @@ python3 -m http.server 8795
 - 螺絲孔位與順序沿用場域模型（團隊現場紀錄）：步驟 1 左下 Z1L、右下 Z1R → 步驟 2 承盤下降 → 步驟 3 左上 Z2L、右上 Z2R，各 1 顆；孔位座標為示意
 - 扭力：下方 65 N·m、上方 90 N·m，容差 ±10%；角度 30–120°
 - 階段時間上限 90 秒（業主答 60–90 秒的上限），剩 15 秒預警
-- 承盤開始下降 8 秒沒降到底 → 系統異常 A：承盤異常
+- 承盤開始下降 8 秒沒降到底 → 系統異常：承盤異常
 - 錯誤步驟＝下方還沒鎖就去鎖上方（需編碼器）；降前鎖附＝下方鎖完、承盤還沒降就去鎖上方
 - 手臂幾何、手臂螢幕與零件規格、工位代號、電池門檻、通訊逾時
 - 情境演練與實境對比的時間軸為示意、已壓縮（每顆約 4.5 秒，承盤 26 秒下降）；廠房情境用場域模型的 3 分鐘時間軸
@@ -100,7 +100,7 @@ drawArmScreen(canvas.getContext('2d'), state, 'L');          // 把手臂螢幕�
 { "ts": "", "vin": "", "station": "", "side": "", "operator": "", "zoneId": "", "boltIndex": 0, "phase": "", "type": "", "torqueNm": 0, "angleDeg": 0, "result": "", "errorCategory": "" }
 ```
 
-`boltIndex` 從 0 起算；不適用的欄位為 `null`。`result`：`OK`、`NG`、`BLOCKED`、`WARN`、`FAULT`、`INFO`。`errorCategory`：`AUTOMATION`（系統異常 A：承盤異常）、`TOOL`（系統異常 B：扭矩槍訊號中斷）、`OPERATION`（作業異常）或空字串。
+`boltIndex` 從 0 起算；不適用的欄位為 `null`。`result`：`OK`、`NG`、`BLOCKED`、`WARN`、`FAULT`、`INFO`。`errorCategory`：`AUTOMATION`（系統異常：承盤異常）、`TOOL`（系統異常 A：扭矩槍訊號中斷）、`OPERATION`（作業異常）或空字串。
 
 | type | 說明 | errorCategory |
 |---|---|---|
@@ -116,8 +116,8 @@ drawArmScreen(canvas.getContext('2d'), state, 'L');          // 把手臂螢幕�
 | PHASE_COMPLETE | 階段完成 | |
 | TRAY_LOWERING | 承盤開始下降 | |
 | TRAY_LOWERED | 承盤下降完成 | |
-| AUTOMATION_FAULT | 系統異常 A：承盤異常（逾時、未依節拍下降） | AUTOMATION |
-| TOOL_FAULT | 系統異常 B：扭矩槍訊號中斷（電池、感測器異常也記在這類） | TOOL |
+| AUTOMATION_FAULT | 系統異常：承盤異常（逾時、未依節拍下降） | AUTOMATION |
+| TOOL_FAULT | 系統異常 A：扭矩槍訊號中斷（電池、感測器異常也記在這類） | TOOL |
 | TOOL_RECOVERED | 扭矩槍恢復 | |
 | BYPASS_ON / BYPASS_OFF | 現場主管鑰匙降級模式 | |
 | CYCLE_COMPLETE | 本車完成 | |

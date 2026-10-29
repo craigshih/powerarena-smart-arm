@@ -366,10 +366,10 @@
           <table class="compare">
             <thead><tr><th>故障</th><th>工具反應</th><th>誰處理</th><th>分類</th></tr></thead>
             <tbody>
-              <tr><th>承盤異常</th><td>上方不開放</td><td>現場主管復歸承盤</td><td><span class="cat cat-AUTOMATION">系統異常 A</span></td></tr>
-              <tr><th>扭矩槍訊號中斷</th><td>立即停轉鎖住</td><td>現場主管、工具商</td><td><span class="cat cat-TOOL">系統異常 B</span></td></tr>
-              <tr><th>感測器異常</th><td>鎖住</td><td>工具商</td><td><span class="cat cat-TOOL">系統異常 B</span></td></tr>
-              <tr><th>控制器故障</th><td>鑰匙切降級，回現行作業</td><td>維護＋現場主管</td><td><span class="cat cat-TOOL">系統異常 B</span></td></tr>
+              <tr><th>承盤異常</th><td>上方不開放</td><td>現場主管復歸承盤</td><td><span class="cat cat-AUTOMATION">系統異常</span></td></tr>
+              <tr><th>扭矩槍訊號中斷</th><td>立即停轉鎖住</td><td>現場主管、工具商</td><td><span class="cat cat-TOOL">系統異常 A</span></td></tr>
+              <tr><th>感測器異常</th><td>鎖住</td><td>工具商</td><td><span class="cat cat-TOOL">系統異常 A</span></td></tr>
+              <tr><th>控制器故障</th><td>鑰匙切降級，回現行作業</td><td>維護＋現場主管</td><td><span class="cat cat-TOOL">系統異常 A</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -396,8 +396,8 @@
           <select id="f-cat" aria-label="錯誤分類">
             <option value="">全部分類</option>
             <option value="ANY">只看有錯誤</option>
-            <option value="AUTOMATION">系統異常 A：承盤異常</option>
-            <option value="TOOL">系統異常 B：扭矩槍訊號中斷</option>
+            <option value="AUTOMATION">系統異常：承盤異常</option>
+            <option value="TOOL">系統異常 A：扭矩槍訊號中斷</option>
             <option value="OPERATION">作業異常</option>
           </select>
           <div class="filter-actions">
