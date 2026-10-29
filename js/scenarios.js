@@ -142,7 +142,7 @@ export const SCENARIOS = [
       L.at(1.5).move('Z1L', 0).note('左下螺絲套筒對不上，作業員反覆調整');
       L.wait(8).note('聽到「還剩 15 秒」，加快調整');
       L.wait(13.5).trigger().torque('Z1L');
-      L.note('聽到「超過鎖附時間」：照常補完，系統記錄超時給班長追蹤', -1.2).wait(1).rest();
+      L.note('聽到「超過鎖附時間」：照常補完，系統記錄超時給現場主管追蹤', -1.2).wait(1).rest();
     }),
   },
   {
@@ -177,7 +177,7 @@ export const SCENARIOS = [
     id: 'automation',
     title: '系統異常 A：承盤異常',
     short: '承盤下降到一半卡住',
-    expect: '判承盤異常，上方不開放，通知班長。',
+    expect: '判承盤異常，上方不開放，通知現場主管。',
     build: (ctx) => {
       ctx.customTray = true;
       ctx.cStart = TRAY_DUE + 17.5;
@@ -185,8 +185,8 @@ export const SCENARIOS = [
         normalA(L).note('左下完成，工具已鎖定，等承盤');
         all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
         all(TRAY_DUE + 2, { trayStop: true });
-        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常 A：承盤異常」。作業員照常等待；班長收到通知到場' });
-        all(TRAY_DUE + 14, { note: '班長確認承盤卡住，按下承盤復歸' });
+        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常 A：承盤異常」。作業員照常等待；現場主管收到通知到場' });
+        all(TRAY_DUE + 14, { note: '現場主管確認承盤卡住，按下承盤復歸' });
         all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
         all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
       });
@@ -201,7 +201,7 @@ export const SCENARIOS = [
       L.at(1.5).move('Z1L', 0).trigger();
       L.push({ ev: { type: 'tool:fault', code: 'COMM_LOST' } }, 0.5);
       L.note('工具與控制器通訊中斷（假設：接頭鬆脫），工具立刻停轉並鎖住，這一顆不計數', 0.7);
-      L.wait(3).note('班長重新插好接頭，控制器自我檢查通過');
+      L.wait(3).note('現場主管重新插好接頭，控制器自我檢查通過');
       L.push({ ev: { type: 'tool:recover' } }, 0.3);
       L.wait(1).note('作業員重鎖這一顆').trigger().torque('Z1L');
       L.wait(1.4).rest();

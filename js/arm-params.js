@@ -57,7 +57,7 @@ export const P = {
   speakerLevel: p(85, 'dB', '喇叭音量（1 m 處）', SRC.ASM, 'assumed', '高於廠房背景噪音'),
   encoderRes: p(0.1, '°', '關節編碼器解析度', SRC.ASM, 'assumed'),
   plcSignals: p(2, '點', '承盤數位訊號（24 V）', SRC.ASM, 'assumed', '開始下降、下降完成'),
-  keyModes: p('正常／降級', '', '班長鑰匙開關', SRC.ASM, 'assumed'),
+  keyModes: p('正常／降級', '', '現場主管鑰匙開關', SRC.ASM, 'assumed'),
 
   // ── 手臂螢幕 ──────────────────────────────
   screenSize: p(10.1, '吋', '手臂螢幕尺寸', SRC.ASM, 'assumed', '工業級觸控面板，只顯示不需操作'),

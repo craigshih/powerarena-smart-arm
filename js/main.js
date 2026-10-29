@@ -321,7 +321,7 @@ function consume(out, { silent = false } = {}) {
   }
   for (const n of out.notes) {
     ui.notes[n.side] = { t: n.t, text: n.text };
-    ui.log.unshift({ sim: n.t, lv: 'note', text: `<b>${n.side === 'all' ? '班長' : n.side}</b> ${esc(n.text)}` });
+    ui.log.unshift({ sim: n.t, lv: 'note', text: `<b>${n.side === 'all' ? '現場主管' : n.side}</b> ${esc(n.text)}` });
   }
   for (const m of out.moves) {
     if (m.target) arms[m.side].setToolTarget(toolPoint(m.target));
@@ -424,7 +424,7 @@ function renderSideCards() {
   }
   const boss = $('.sc-boss');
   boss.hidden = !ui.notes.all;
-  if (ui.notes.all) boss.textContent = `班長：${ui.notes.all.text}`;
+  if (ui.notes.all) boss.textContent = `現場主管：${ui.notes.all.text}`;
 }
 const lastHtml = new WeakMap();
 function paint(el, html) {

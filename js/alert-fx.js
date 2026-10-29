@@ -273,7 +273,7 @@ export function createAlertFx(scene) {
           S.halo.material.color.setHex(fx.color);
           S.halo.scale.setScalar(1 + 0.2 * Math.sin(time * 9));
           S.halo.material.opacity = Math.sin(time * 9) > 0 ? 0.32 : 0.12;
-          label(p, '扭矩槍訊號中斷・已鎖住', '通知班長', 0.35);
+          label(p, '扭矩槍訊號中斷・已鎖住', '通知現場主管', 0.35);
           break;
         }
         default:
@@ -295,7 +295,7 @@ export function createAlertFx(scene) {
       trayBox.visible = true;
       trayLabel.obj.position.copy(trayBox.position).add(_v.set(0, 0.35, 0.6));
       if (trayMode === 'automation') {
-        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '系統異常 A：承盤異常', '不是作業員的錯，等班長復歸'), 'fx-automation');
+        setLabel(trayLabel, labelHtml(FX.AUTOMATION_FAULT, '系統異常 A：承盤異常', '不是作業員的錯，等現場主管復歸'), 'fx-automation');
       } else {
         setLabel(trayLabel, labelHtml({ icon: 'stop' }, '承盤未下降', '上方螺絲不開放'), 'fx-warn');
       }

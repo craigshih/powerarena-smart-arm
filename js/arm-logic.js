@@ -7,7 +7,7 @@
 //   tool:torque   { torqueNm, angleDeg }         工具回報這一顆的扭力與角度
 //   tray:lowering / tray:lowered                 承盤 PLC 訊號
 //   tool:fault    { code }  /  tool:recover      扭矩槍訊號中斷等工具異常與恢復
-//   bypass:on / bypass:off                       班長鑰匙開關（降級模式）
+//   bypass:on / bypass:off                       現場主管鑰匙開關（降級模式）
 //   timer                                        定時檢查（超時、承盤逾時）
 //
 // 輸出：dispatch() 回傳 { state, records, alerts }。records 是新增的事件紀錄，
@@ -223,7 +223,7 @@ export function createArmLogic(options = {}) {
     s.automationFault = code;
     if (code === 'TRAY_STUCK') s.tray = 'STUCK';
     if (cfg.stationEvents) rec('AUTOMATION_FAULT', { phase: 'B' });
-    alarm('AUTOMATION_FAULT', 'fault', `${FAULT_TEXT[code]}，步驟 3 暫停`, '承盤未下降，請通知班長');
+    alarm('AUTOMATION_FAULT', 'fault', `${FAULT_TEXT[code]}，步驟 3 暫停`, '承盤未下降，請通知現場主管');
   }
 
   // ── 工具狀態（含智能鎖定的致能／鎖定紀錄）────────────
@@ -354,7 +354,7 @@ export function createArmLogic(options = {}) {
       s.fault = e.code || 'COMM_LOST';
       rec('TOOL_FAULT', { zoneId: aborted?.zoneId ?? '', boltIndex: aborted?.boltIndex ?? null });
       const comm = s.fault === 'COMM_LOST'; // 系統異常 B 專指扭矩槍訊號中斷，其他工具問題照舊叫工具異常
-      alarm('TOOL_FAULT', 'fault', `${comm ? '系統異常 B' : '工具異常'}：${FAULT_TEXT[s.fault] ?? s.fault}`, comm ? '扭矩槍訊號中斷，請通知班長' : '工具異常，請通知班長');
+      alarm('TOOL_FAULT', 'fault', `${comm ? '系統異常 B' : '工具異常'}：${FAULT_TEXT[s.fault] ?? s.fault}`, comm ? '扭矩槍訊號中斷，請通知現場主管' : '工具異常，請通知現場主管');
     },
 
     'tool:recover'() {
