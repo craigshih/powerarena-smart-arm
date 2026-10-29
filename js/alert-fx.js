@@ -26,6 +26,7 @@ const ICON = {
   gear: '<circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   check: '<path d="M4 12l5 5L20 6"/>',
+  eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
 };
 const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
 
@@ -37,8 +38,9 @@ export const FX = {
   TIMEOUT: { mood: 'timeout', color: 0xff7a1a, icon: 'clock', title: '超過鎖附時間' },
   AUTOMATION_FAULT: { mood: 'automation', color: 0xb07cff, icon: 'gear', title: '承盤異常' },
   TOOL_FAULT: { mood: 'tool', color: 0xff8a3d, icon: 'bolt', title: '扭矩槍訊號中斷' },
+  VISION_MISMATCH: { mood: 'vision', color: 0x2dc7ff, icon: 'eye', title: '視覺與 IoT 不一致' },
 };
-const MOOD_RANK = { '': 0, ok: 1, warn: 2, timeout: 3, sequence: 4, operation: 4, tool: 5, automation: 5 };
+const MOOD_RANK = { '': 0, ok: 1, warn: 2, timeout: 3, sequence: 4, operation: 4, tool: 5, automation: 5, vision: 5 };
 
 const additive = (color, opacity) => new THREE.MeshBasicMaterial({
   color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
@@ -274,6 +276,14 @@ export function createAlertFx(scene) {
           S.halo.scale.setScalar(1 + 0.2 * Math.sin(time * 9));
           S.halo.material.opacity = Math.sin(time * 9) > 0 ? 0.32 : 0.12;
           label(p, '扭矩槍訊號中斷・已鎖住', '通知現場主管', 0.35);
+          break;
+        }
+        case 'VISION_MISMATCH': {
+          const r = lastRec[side].VISION_MISMATCH;
+          const p = boltVec(r && r.zoneId ? { zoneId: r.zoneId, boltIndex: r.boltIndex ?? 0 } : null);
+          if (!p) break;
+          place(S, p, fx.color, { time, pulse: 1.8 });
+          label(p, '視覺與 IoT 不一致', '攝影機看到已鎖、沒有扭力紀錄・原地重鎖');
           break;
         }
         default:

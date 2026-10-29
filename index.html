@@ -183,10 +183,6 @@
     <section class="view app" data-view="arm" aria-label="情境演練" hidden>
       <aside class="side side-left">
         <section class="card">
-          <h2>情境</h2>
-          <div id="scenario-list" class="scenarios"></div>
-        </section>
-        <section class="card">
           <h2>選項</h2>
           <label class="toggle"><input type="checkbox" id="opt-encoder" checked><span></span>關節編碼器（選配）</label>
           <label class="toggle"><input type="checkbox" id="opt-follow" checked><span></span>出錯時鏡頭跟過去</label>
@@ -209,7 +205,7 @@
       <section class="stage">
         <div id="viewport" class="viewport">
           <div class="hud" id="hud">
-            <b id="hud-title">正常流程</b>
+            <label class="scen-pick"><span>情境</span><select id="scenario-select" aria-label="情境"></select></label>
             <span id="hud-expect"></span>
           </div>
         </div>
@@ -396,8 +392,9 @@
           <select id="f-cat" aria-label="錯誤分類">
             <option value="">全部分類</option>
             <option value="ANY">只看有錯誤</option>
-            <option value="AUTOMATION">系統異常：承盤異常</option>
             <option value="TOOL">系統異常 A：扭矩槍訊號中斷</option>
+            <option value="VISION">系統異常 B：視覺與 IoT 不一致</option>
+            <option value="AUTOMATION">系統異常：承盤異常</option>
             <option value="OPERATION">作業異常</option>
           </select>
           <div class="filter-actions">

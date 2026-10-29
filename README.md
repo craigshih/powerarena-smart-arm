@@ -16,12 +16,12 @@ python3 -m http.server 8795
 
 ## 畫面
 
-導覽列四大項，所在大項會展開子項。整體以 mock-up 為主，文字精簡，細節口頭說明。畫面用詞與同事的主管端模組統一：降前鎖附、扭力不足、錯誤步驟、系統異常：承盤異常、系統異常 A：扭矩槍訊號中斷、智能鎖定、機器手臂 L／R、作業員（左側／右側作業員，編號 OP-001 格式）、現場主管。情境順序與主管端下拉選單一致；系統異常 A 是扭矩槍訊號中斷，承盤異常在主管端清單沒有代號，系統異常 B（視覺與 IoT 不一致）只在主管端。
+導覽列四大項，所在大項會展開子項。整體以 mock-up 為主，文字精簡，細節口頭說明。畫面用詞與同事的主管端模組統一：降前鎖附、扭力不足、錯誤步驟、系統異常：承盤異常、系統異常 A：扭矩槍訊號中斷、智能鎖定、機器手臂 L／R、作業員（左側／右側作業員，編號 OP-001 格式）、現場主管。情境選單與主管端下拉選單一致；承盤異常不在主管端清單，從選單拿掉，只保留給手臂介紹的狀態示範與追溯示範資料。
 
 - **廠房情境**（預設首頁）：場域模型（powerarena-station-twin）的情境站：3 分鐘標準作業時間軸、1-2-3 流程條、三支攝影機子畫面與標註框、視角與圖層，懸吊工具換成改良版手臂與會動的作業員。
 - **手臂**
   - **介紹**：只有手臂本身的 3D 展示。新款、舊款、並排、廠房實境四種顯示；點部件會放大到那個部件，右側一行「新款 vs 舊款」。狀態按鈕把手臂切到不同時刻，每個狀態有自己的顏色、圖示、工具光暈與狀態徽章，並對準工具與手臂螢幕。下方是手臂螢幕實機放大與它對作業員的作用。
-  - **情境演練**：7 種情境播放（中文語音，可靜音）。右側每側一塊：手臂螢幕畫面、聲音、作業員處置。七種情境各有自己的 3D 示警（顏色、圖示、光柱、標記、畫面邊框），出錯時鏡頭可自動跟過去。
+  - **情境演練**：3D 畫面左上角的「情境」下拉選單，內容與順序同主管端模組：正常流程、降前鎖附、超過鎖附時間、錯誤步驟、扭力不足、系統異常 A：扭矩槍訊號中斷、系統異常 B：視覺與 IoT 不一致、系統異常 C：扭矩槍訊號中斷（A、C 用同一段腳本）。中文語音，可靜音。右側每側一塊：手臂螢幕畫面、聲音、作業員處置。每種錯誤各有自己的 3D 示警（顏色、圖示、光柱、標記、畫面邊框），出錯時鏡頭可自動跟過去。
   - **鎖附參數設定**：只設扭力、容差、角度。
 - **現在 vs 改良後**
   - **實境對比**：同一位作業員、同一段動作，左邊現行手臂、右邊 IoT 手臂。章節按鈕（開始、出錯的那一刻、承盤下降、鎖上方、完成）與時間軸可直接跳到要看的地方。
@@ -92,7 +92,7 @@ drawArmScreen(canvas.getContext('2d'), state, 'L');          // 把手臂螢幕�
 
 ### 輸入事件
 
-`cycle:start`、`tool:position`（編碼器回報區域）、`tool:trigger`、`tool:torque`、`tray:lowering`、`tray:lowered`、`tool:fault`、`tool:recover`、`bypass:on`、`bypass:off`、`timer`
+`cycle:start`、`tool:position`（編碼器回報區域）、`tool:trigger`、`tool:torque`、`tray:lowering`、`tray:lowered`、`tool:fault`、`tool:recover`、`vision:check`（攝影機判定某顆已鎖）、`bypass:on`、`bypass:off`、`timer`
 
 ### 事件紀錄
 
@@ -100,7 +100,7 @@ drawArmScreen(canvas.getContext('2d'), state, 'L');          // 把手臂螢幕�
 { "ts": "", "vin": "", "station": "", "side": "", "operator": "", "zoneId": "", "boltIndex": 0, "phase": "", "type": "", "torqueNm": 0, "angleDeg": 0, "result": "", "errorCategory": "" }
 ```
 
-`boltIndex` 從 0 起算；不適用的欄位為 `null`。`result`：`OK`、`NG`、`BLOCKED`、`WARN`、`FAULT`、`INFO`。`errorCategory`：`AUTOMATION`（系統異常：承盤異常）、`TOOL`（系統異常 A：扭矩槍訊號中斷）、`OPERATION`（作業異常）或空字串。
+`boltIndex` 從 0 起算；不適用的欄位為 `null`。`result`：`OK`、`NG`、`BLOCKED`、`WARN`、`FAULT`、`INFO`。`errorCategory`：`AUTOMATION`（系統異常：承盤異常）、`TOOL`（系統異常 A：扭矩槍訊號中斷）、`VISION`（系統異常 B：視覺與 IoT 不一致）、`OPERATION`（作業異常）或空字串。
 
 | type | 說明 | errorCategory |
 |---|---|---|
@@ -119,5 +119,6 @@ drawArmScreen(canvas.getContext('2d'), state, 'L');          // 把手臂螢幕�
 | AUTOMATION_FAULT | 系統異常：承盤異常（逾時、未依節拍下降） | AUTOMATION |
 | TOOL_FAULT | 系統異常 A：扭矩槍訊號中斷（電池、感測器異常也記在這類） | TOOL |
 | TOOL_RECOVERED | 扭矩槍恢復 | |
+| VISION_MISMATCH | 系統異常 B：攝影機判定已鎖，IoT 沒有這一顆的扭力紀錄 | VISION |
 | BYPASS_ON / BYPASS_OFF | 現場主管鑰匙降級模式 | |
 | CYCLE_COMPLETE | 本車完成 | |

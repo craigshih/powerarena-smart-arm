@@ -7,6 +7,7 @@
 //   tool:torque   { torqueNm, angleDeg }         工具回報這一顆的扭力與角度
 //   tray:lowering / tray:lowered                 承盤 PLC 訊號
 //   tool:fault    { code }  /  tool:recover      扭矩槍訊號中斷等工具異常與恢復
+//   vision:check  { zoneId, boltIndex }          攝影機（主管端視覺模組）判定這一顆已鎖
 //   bypass:on / bypass:off                       現場主管鑰匙開關（降級模式）
 //   timer                                        定時檢查（超時、承盤逾時）
 //
@@ -15,9 +16,11 @@
 
 import { P, SEQUENCE, SPEC, zoneById } from './arm-params.js';
 
+// 代號照主管端模組：A 扭矩槍訊號中斷、B 視覺與 IoT 不一致；承盤異常在主管端清單沒有代號
 export const CATEGORY = {
-  AUTOMATION: '系統異常：承盤異常',
   TOOL: '系統異常 A：扭矩槍訊號中斷',
+  VISION: '系統異常 B：視覺與 IoT 不一致',
+  AUTOMATION: '系統異常：承盤異常',
   OPERATION: '作業異常',
 };
 
@@ -38,6 +41,7 @@ export const EVENT_TYPES = {
   AUTOMATION_FAULT: { label: '承盤異常', result: 'FAULT', category: 'AUTOMATION' },
   TOOL_FAULT: { label: '扭矩槍訊號中斷', result: 'FAULT', category: 'TOOL' },
   TOOL_RECOVERED: { label: '扭矩槍恢復', result: 'INFO', category: '' },
+  VISION_MISMATCH: { label: '視覺與 IoT 不一致', result: 'FAULT', category: 'VISION' },
   BYPASS_ON: { label: '降級模式開啟', result: 'WARN', category: '' },
   BYPASS_OFF: { label: '降級模式關閉', result: 'INFO', category: '' },
   CYCLE_COMPLETE: { label: '本車完成', result: 'OK', category: '' },
@@ -314,7 +318,7 @@ export function createArmLogic(options = {}) {
       if (!reason) {
         s.bolts[zoneId][boltIndex] = 'OK';
         if (s.rework && s.rework.zoneId === zoneId && s.rework.boltIndex === boltIndex) s.rework = null;
-        clearAlarm('TIGHTEN_NG', 'TOOL_RECOVERED');
+        clearAlarm('TIGHTEN_NG', 'TOOL_RECOVERED', 'VISION_MISMATCH');
         rec('TIGHTEN_OK', base);
         advancePhase();
         return;
@@ -355,6 +359,17 @@ export function createArmLogic(options = {}) {
       rec('TOOL_FAULT', { zoneId: aborted?.zoneId ?? '', boltIndex: aborted?.boltIndex ?? null });
       const comm = s.fault === 'COMM_LOST'; // 系統異常 A 專指扭矩槍訊號中斷，其他工具問題照舊叫工具異常
       alarm('TOOL_FAULT', 'fault', `${comm ? '系統異常 A' : '工具異常'}：${FAULT_TEXT[s.fault] ?? s.fault}`, comm ? '扭矩槍訊號中斷，請通知現場主管' : '工具異常，請通知現場主管');
+    },
+
+    // 攝影機判定這一顆已鎖，IoT 卻沒有它的扭力紀錄（例如資料寫入失敗）：視覺與 IoT 不一致。
+    // 這次鎖附不算數，這一顆仍是下一顆，作業員原地重鎖補上紀錄
+    'vision:check'(e) {
+      const { zoneId, boltIndex = 0 } = e;
+      const zone = zoneId ? zoneById(zoneId) : null;
+      if (!zone || zone.side !== s.side || s.bolts[zoneId][boltIndex] === 'OK') return;
+      s.attempt = null;
+      rec('VISION_MISMATCH', { zoneId, boltIndex });
+      alarm('VISION_MISMATCH', 'alarm', `系統異常 B：${zone.label}沒有扭力紀錄`, '紀錄不一致，請重鎖並通知現場主管');
     },
 
     'tool:recover'() {

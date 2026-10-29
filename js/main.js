@@ -240,7 +240,6 @@ function load(id, { autoplay = false } = {}) {
   }
   consume(ui.run.advance(0), { silent: true });
   const sc = scenarioById(id);
-  $('#hud-title').textContent = sc.title;
   $('#hud-expect').textContent = sc.needsEncoder && !ui.encoder
     ? '編碼器已關閉：控制器不知道工具在哪個區域，這個錯誤抓不到。'
     : sc.expect;
@@ -341,16 +340,12 @@ function tick(dt) {
 }
 
 // ── 左側：情境清單、播放控制 ─────────────────────
+// 情境用下拉選單，內容與順序同主管端模組
+$('#scenario-select').innerHTML = SCENARIOS.map((s) => `<option value="${s.id}">${s.title}</option>`).join('');
 function renderScenarioList() {
-  $('#scenario-list').innerHTML = SCENARIOS.map((s, i) => `
-    <button class="scen${s.id === ui.scenarioId ? ' on' : ''}" data-scen="${s.id}" type="button">
-      <i>${i + 1}</i><b>${s.title}</b><span>${s.short}</span>
-    </button>`).join('');
+  $('#scenario-select').value = ui.scenarioId;
 }
-$('#scenario-list').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-scen]');
-  if (b) load(b.dataset.scen, { autoplay: true });
-});
+$('#scenario-select').addEventListener('change', (e) => load(e.target.value, { autoplay: true }));
 $('#t-play').addEventListener('click', () => (ui.playing ? pause() : play()));
 $('#t-restart').addEventListener('click', () => load(ui.scenarioId, { autoplay: true }));
 $$('[data-speed]').forEach((b) => b.addEventListener('click', () => {

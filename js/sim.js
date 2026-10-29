@@ -22,6 +22,7 @@ const LEGACY_TEXT = {
   TIMEOUT: '沒有人知道已經超時，事後也查不到',
   AUTOMATION_FAULT: '承盤卡住，但工具仍然能轉；以為承盤降了就開始鎖，等於降前鎖附',
   TOOL_FAULT: '工具停了，這一顆有沒有鎖到位沒有紀錄',
+  VISION_MISMATCH: '沒有扭力紀錄可以和攝影機比對，漏記的這一顆沒人發現',
 };
 
 const fmtT = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -136,7 +137,7 @@ export function createSim(deps) {
 
   // 章節按鈕：開始、每種警示的前一刻、承盤下降、鎖上方、完成
   const ALERT_LABEL = { EARLY_ATTEMPT: '降前鎖附', SEQUENCE_ERROR: '錯誤步驟', TIGHTEN_NG: '扭力不足', PHASE_WARNING: '即將超時',
-    TIMEOUT: '超時', AUTOMATION_FAULT: '承盤異常', TOOL_FAULT: '訊號中斷' };
+    TIMEOUT: '超時', AUTOMATION_FAULT: '承盤異常', TOOL_FAULT: '訊號中斷', VISION_MISMATCH: '視覺不一致' };
   function buildChapters() {
     const run = st.run;
     const marks = run.markers();
@@ -298,7 +299,7 @@ export function createSim(deps) {
   }
 
   // ── 控制 ─────────────────────────────────
-  $('#sim-scenario').innerHTML = SCENARIOS.map((s, i) => `<option value="${s.id}">${i + 1}. ${s.title}</option>`).join('');
+  $('#sim-scenario').innerHTML = SCENARIOS.map((s) => `<option value="${s.id}">${s.title}</option>`).join('');
   $('#sim-scenario').addEventListener('change', (e) => { unlockAudio(); load(e.target.value, true); });
   $('#sim-play').addEventListener('click', () => {
     unlockAudio();

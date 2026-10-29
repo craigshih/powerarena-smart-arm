@@ -101,7 +101,59 @@ function base(ctx, variant) {
 
 const normalA = (L) => L.at(1.5).bolt('Z1L', 0).rest();
 
-// 順序與主管端模組的情境下拉選單一致
+const TOOL_FAULT = {
+  id: 'tool',
+  title: '系統異常 A：扭矩槍訊號中斷',
+  short: '鎖附中扭矩槍訊號中斷',
+  expect: '立刻停轉鎖住，恢復後重鎖這一顆。',
+  build: (ctx) => base(ctx, (L) => {
+    L.at(1.5).move('Z1L', 0).trigger();
+    L.push({ ev: { type: 'tool:fault', code: 'COMM_LOST' } }, 0.5);
+    L.note('工具與控制器通訊中斷（假設：接頭鬆脫），工具立刻停轉並鎖住，這一顆不計數', 0.7);
+    L.wait(3).note('現場主管重新插好接頭，控制器自我檢查通過');
+    L.push({ ev: { type: 'tool:recover' } }, 0.3);
+    L.wait(1).note('作業員重鎖這一顆').trigger().torque('Z1L');
+    L.wait(1.4).rest();
+  }),
+};
+
+const VISION = {
+  id: 'vision',
+  title: '系統異常 B：視覺與 IoT 不一致',
+  short: '攝影機看到鎖了，IoT 沒有紀錄',
+  expect: '判視覺與 IoT 不一致，這一顆重鎖補上紀錄，通知現場主管。',
+  build: (ctx) => base(ctx, (L) => {
+    L.at(1.5).move('Z1L', 0).trigger();
+    L.note('作業員鎖好左下螺絲，但扭力紀錄沒寫進系統（假設：資料寫入失敗）', 0.6);
+    L.wait(1).push({ ev: { type: 'vision:check', zoneId: 'Z1L', boltIndex: 0 } });
+    L.note('攝影機判定左下已鎖，IoT 卻沒有這一顆的扭力紀錄：判「系統異常 B：視覺與 IoT 不一致」', 0.2);
+    L.wait(1.6).note('作業員原地重鎖補上紀錄；現場主管收到通知複查').trigger().torque('Z1L');
+    L.wait(1.4).rest();
+  }),
+};
+
+// 承盤異常不在主管端的情境清單裡，不列進選單；手臂介紹的「承盤異常」狀態與追溯示範資料仍會用到
+const TRAY_FAULT = {
+  id: 'automation',
+  title: '系統異常：承盤異常',
+  short: '承盤下降到一半卡住',
+  expect: '判承盤異常，上方不開放，通知現場主管。',
+  build: (ctx) => {
+    ctx.customTray = true;
+    ctx.cStart = TRAY_DUE + 17.5;
+    return base(ctx, (L, all) => {
+      normalA(L).note('左下完成，工具已鎖定，等承盤');
+      all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
+      all(TRAY_DUE + 2, { trayStop: true });
+      all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常：承盤異常」。作業員照常等待；現場主管收到通知到場' });
+      all(TRAY_DUE + 14, { note: '現場主管確認承盤卡住，按下承盤復歸' });
+      all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
+      all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
+    });
+  },
+};
+
+// 選單內容與順序照主管端模組的情境下拉選單（A、C 都是扭矩槍訊號中斷，用同一段腳本）
 export const SCENARIOS = [
   {
     id: 'normal',
@@ -174,43 +226,14 @@ export const SCENARIOS = [
       L.rest();
     }),
   },
-  {
-    id: 'tool',
-    title: '系統異常 A：扭矩槍訊號中斷',
-    short: '鎖附中扭矩槍訊號中斷',
-    expect: '立刻停轉鎖住，恢復後重鎖這一顆。',
-    build: (ctx) => base(ctx, (L) => {
-      L.at(1.5).move('Z1L', 0).trigger();
-      L.push({ ev: { type: 'tool:fault', code: 'COMM_LOST' } }, 0.5);
-      L.note('工具與控制器通訊中斷（假設：接頭鬆脫），工具立刻停轉並鎖住，這一顆不計數', 0.7);
-      L.wait(3).note('現場主管重新插好接頭，控制器自我檢查通過');
-      L.push({ ev: { type: 'tool:recover' } }, 0.3);
-      L.wait(1).note('作業員重鎖這一顆').trigger().torque('Z1L');
-      L.wait(1.4).rest();
-    }),
-  },
-  {
-    id: 'automation',
-    title: '系統異常：承盤異常',
-    short: '承盤下降到一半卡住',
-    expect: '判承盤異常，上方不開放，通知現場主管。',
-    build: (ctx) => {
-      ctx.customTray = true;
-      ctx.cStart = TRAY_DUE + 17.5;
-      return base(ctx, (L, all) => {
-        normalA(L).note('左下完成，工具已鎖定，等承盤');
-        all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
-        all(TRAY_DUE + 2, { trayStop: true });
-        all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常：承盤異常」。作業員照常等待；現場主管收到通知到場' });
-        all(TRAY_DUE + 14, { note: '現場主管確認承盤卡住，按下承盤復歸' });
-        all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
-        all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
-      });
-    },
-  },
+  TOOL_FAULT,
+  VISION,
+  { ...TOOL_FAULT, id: 'toolC', title: '系統異常 C：扭矩槍訊號中斷' },
 ];
 
-export const scenarioById = (id) => SCENARIOS.find((s) => s.id === id) ?? SCENARIOS[0];
+const ALL = [...SCENARIOS, TRAY_FAULT];
+
+export const scenarioById = (id) => ALL.find((s) => s.id === id) ?? SCENARIOS[0];
 
 // ── 播放引擎 ─────────────────────────────────────
 // 依時間推進腳本，把事件送進左右兩個狀態機，並回報這段時間內的輸出。
@@ -308,7 +331,7 @@ export function runHeadless(scenario, opts) {
 // 示範用的追溯資料：用同一套腳本與狀態機跑出昨天到今天的車
 export function generateHistory({ count = 36, start = Date.parse('2026-10-21T08:00:00+08:00'), spec = SPEC } = {}) {
   const r = rng(2026);
-  const plan = ['normal', 'normal', 'normal', 'ng', 'normal', 'early', 'normal', 'normal', 'timeout', 'normal', 'sequence', 'normal',
+  const plan = ['normal', 'normal', 'normal', 'ng', 'normal', 'early', 'normal', 'normal', 'timeout', 'vision', 'sequence', 'normal',
     'normal', 'early', 'normal', 'tool', 'normal', 'normal', 'ng', 'normal', 'normal', 'automation', 'normal', 'early'];
   const shifts = [{ L: 'OP-001', R: 'OP-002' }, { L: 'OP-003', R: 'OP-004' }];
   const records = [];

@@ -116,6 +116,7 @@ export const SCREEN_FIX = {
   PHASE_WARNING: '加快完成這一階段',
   AUTOMATION_FAULT: '不用處理，等現場主管復歸承盤',
   TOOL_FAULT: '停止作業，通知現場主管',
+  VISION_MISMATCH: '原地重鎖這一顆，補上紀錄',
 };
 
 export function drawArmScreen(c, state, side) {
