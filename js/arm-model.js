@@ -95,6 +95,24 @@ export const ARM_PARTS = [
     why: '作業員低頭看工具時螢幕就在同一個視線裡，不用另外看站旁；錯了當場看得到是哪一顆、要怎麼處置。',
     fault: '裝在手臂外管上、不在工具本體，選用工業級防震螢幕。螢幕故障不影響連鎖，語音與握把燈仍會提示。業主曾否決「在鎖附機器上加裝裝置」，裝在外管上是否可接受需再確認。',
   },
+  {
+    key: 'mic', n: 9, title: '手臂麥克風（作業員回報）', tag: '麥克風', principles: [1, 3],
+    short: '說「收到」或口頭回報異常', beforeShort: '只能喊人或離開工位',
+    spec: ['micType', 'micKeywords'],
+    before: '有狀況只能喊人或離開工位找現場主管，提示有沒有被聽到也沒有紀錄。',
+    what: '降噪麥克風裝在手臂螢幕旁。聽到喇叭提示後說「收到」，系統記下已確認；遇到異常直接說「扭矩槍沒反應」「承盤卡住」，系統記一筆回報、通知現場主管，喇叭回播「已收到回報」。',
+    why: '不用放下工具、不用多按按鈕，開口就能回報；每次提示有沒有被聽到、誰回報了什麼都留下紀錄。',
+    fault: '只辨識固定關鍵詞。麥克風故障時提示照常，系統接收區塊標示「麥克風中斷」，作業員改用原本的方式找現場主管。',
+  },
+  {
+    key: 'trayiot', n: 10, title: '承盤 IoT 感測器', tag: '承盤 IoT', principles: [2, 3],
+    short: '承盤高度與到位即時回傳', beforeShort: '承盤到位只能用看的',
+    spec: ['trayIotSensor', 'trayIotRate'],
+    before: '承盤有沒有降到位只能用看的，卡住時要等人發現。',
+    what: '承盤側面加裝測距感測器，持續回傳高度、下降進度與是否到位，並和 PLC 的「下降完成」訊號互相比對。',
+    why: '工具開不開放看的是承盤真正的位置；承盤卡住時感測器先發現，現場主管直接收到通知。',
+    fault: '感測器斷線時改用 PLC 訊號判斷，系統接收區塊標示「承盤 IoT 中斷」。',
+  },
 ];
 
 const BASE_PARTS = {
@@ -198,7 +216,7 @@ export function drawArmScreen(c, state, side) {
   c.restore();
 }
 
-const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
+const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const LIGHT = { green: 0x3ccf6b, yellow: 0xf0b545, red: 0xe0303a, blue: 0x4ea8ff, off: 0x1e232c };
 
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.35, ...o });
@@ -253,6 +271,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   const lampMats = ['red', 'yellow', 'green'].map((c) => mat(LIGHT[c], {
     emissive: LIGHT[c], emissiveIntensity: 0.04, transparent: true, opacity: 0.9, roughness: 0.3, metalness: 0,
   }));
+  const micMat = mat(LIGHT.off, { emissive: LIGHT.green, emissiveIntensity: 0.35, roughness: 0.3, metalness: 0 });
 
   const root = new THREE.Group();
   root.name = `smart-arm-${side}`;
@@ -370,6 +389,18 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     face.position.z = 0.0155;
     scrParts.add(face);
     display.add(tagPart(scrParts, 'screen'));
+    // 手臂麥克風：螢幕左側的短鵝頸，收音頭朝向作業員；等作業員回覆時 LED 亮藍色
+    const micParts = new THREE.Group();
+    const neck = cyl(0.004, 0.06, M.dark, -0.15, 0.03, -0.005, 8);
+    neck.rotation.z = -0.35;
+    micParts.add(neck);
+    const head = mesh(new THREE.CapsuleGeometry(0.012, 0.026, 4, 10), M.dark, -0.162, 0.06, 0.012);
+    head.rotation.x = Math.PI / 2;
+    micParts.add(head);
+    const micLed = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.003, 8, 20), micMat);
+    micLed.position.set(-0.162, 0.06, 0.04);
+    micParts.add(micLed);
+    display.add(tagPart(micParts, 'mic'));
     wrist.add(display);
   }
 
@@ -398,6 +429,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   tool.add(tagPart(ring, 'ring'));
   const toolTag = addTag(tool, `機器手臂 ${side}`, 'tag-tool', 0, toolLen + 0.08, 0);
   numTag(display, 'screen', 0, 0.12, 0);
+  if (!legacy) numTag(display, 'mic', -0.26, 0.02, 0.02);
   numTag(tool, 'torque', -s * 0.11, 0.17, 0);
   numTag(tool, 'ring', -s * 0.11, 0.245, 0);
 
@@ -474,6 +506,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   // ── 狀態與燈號 ───────────────────────────
   let sig = { ring: 'off', ringBlink: false, stack: { red: 'off', yellow: 'off', green: 'off' }, label: '待機' };
   let running = false;
+  let listening = false; // 有提示等作業員回覆時，麥克風 LED 亮藍色
   let tone = '';
 
   function setState(state) {
@@ -484,6 +517,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     }
     sig = signalsFor(state);
     running = state.tool === 'RUNNING';
+    listening = !!state.alarm && state.alarm.level !== 'info';
     drawScreen(state);
     const next = sig.ring === 'red' ? 'tag-red' : sig.ring === 'yellow' ? 'tag-yellow' : sig.ring === 'green' || sig.ring === 'blue' ? 'tag-green' : '';
     if (next !== tone) {
@@ -513,6 +547,8 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     M.ring.color.setHex(sig.ring === 'off' ? LIGHT.off : rc);
     M.ring.emissive.setHex(rc);
     M.ring.emissiveIntensity = ringOn ? 1.6 : 0.05;
+    micMat.emissive.setHex(listening ? LIGHT.blue : LIGHT.green);
+    micMat.emissiveIntensity = listening ? 0.7 + 0.7 * Math.sin(time * 7) : 0.35;
     ['red', 'yellow', 'green'].forEach((c, i) => {
       const v = sig.stack[c];
       lampMats[i].emissiveIntensity = v === 'on' || (v === 'blink' && blinkOn) ? 1.5 : 0.04;
@@ -556,7 +592,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     for (const [m, original] of saved) m.material = original;
     saved.clear();
     for (const m of [keys].flat().flatMap((k) => byKey[k] || [])) {
-      if (m.material === M.ring || lampMats.includes(m.material)) continue; // 燈號材質要持續更新
+      if (m.material === M.ring || m.material === micMat || lampMats.includes(m.material)) continue; // 燈號材質要持續更新
       if (!m.material.isMeshStandardMaterial) continue; // 螢幕畫面是不受光材質，不能加發光
       saved.set(m, m.material);
       const h = m.material.clone();
@@ -572,6 +608,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     torque: [tool, [0, 0.165, 0], [0.5, 0.16, 0.4]],
     ring: [tool, [0, 0.198, 0], [0.48, 0.18, 0.38]],
     screen: [display, [0, 0, 0], [0.62, 0.22, 0.2]],
+    mic: [display, [-0.16, 0.05, 0.02], [0.4, 0.14, 0.24]],
     encoder: [j2, [0, 0, 0], [0.36, 0.32, 0.5]],
     controller: [ctrl, [0, cabY + 0.14, 0], [0.42, 0.22, -1.2]],
     key: [ctrl, [0.08, cabY - 0.08, -0.078], [0.2, 0.06, -0.6]],

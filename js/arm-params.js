@@ -66,6 +66,12 @@ export const P = {
   screenDistance: p(0.5, 'm', '作業員眼睛到螢幕距離', SRC.ASM, 'assumed', '彎腰鎖附時'),
   screenMount: p('平衡器外管下端', '', '安裝位置', SRC.ASM, 'assumed', '跟著工具移動，不在工具本體'),
 
+  // ── 手臂麥克風與承盤 IoT ────────────────────
+  micType: p('指向性降噪麥克風', '', '手臂麥克風', SRC.ASM, 'assumed', '裝在手臂螢幕旁，廠區噪音下只收近距離人聲'),
+  micKeywords: p('收到／扭矩槍沒反應／承盤卡住', '', '語音辨識關鍵詞', SRC.ASM, 'assumed', '只辨識固定關鍵詞，不做自由對話'),
+  trayIotSensor: p('雷射測距＋無線傳輸', '', '承盤 IoT 感測器', SRC.ASM, 'assumed', '裝在承盤側面，回報高度與是否到位'),
+  trayIotRate: p(10, 'Hz', '承盤 IoT 回傳頻率', SRC.ASM, 'assumed'),
+
   // ── 追溯欄位 ──────────────────────────────
   station: p('ENG-07', '', '工位代號', SRC.ASM, 'assumed'),
 };
@@ -134,4 +140,5 @@ export const PARAM_GROUPS = [
   ['工具與感測', ['batteryLowPct', 'commTimeout', 'encoderZoneTol', 'station']],
   ['零件規格', ['controllerPsets', 'toolTorqueRange', 'toolAngleRes', 'ringSignals', 'speakerLevel', 'encoderRes', 'plcSignals', 'keyModes']],
   ['手臂螢幕', ['screenSize', 'screenBrightness', 'screenRating', 'screenDistance', 'screenMount']],
+  ['麥克風與承盤 IoT', ['micType', 'micKeywords', 'trayIotSensor', 'trayIotRate']],
 ];

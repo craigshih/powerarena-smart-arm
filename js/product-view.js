@@ -13,7 +13,7 @@ import { buildEnvironment, addFactoryBackdrop } from './environment.js';
 import { createOperator } from './operator.js';
 import { createAlertFx } from './alert-fx.js';
 
-const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
+const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const NEW_KEYS = ARM_PARTS.map((p) => p.key);
 const HANG_Y = P.railY.v;
 
@@ -59,7 +59,7 @@ function demoAt(d, spec) {
   const run = createRun(scenarioById(d.id), { encoder: true, spec, vin: 'TWPA2026E00000001', epoch: Date.parse('2026-10-24T08:00:00+08:00') });
   const records = [];
   for (let x = 0; x < d.t; x += 0.25) records.push(...run.advance(Math.min(x + 0.25, d.t)).records);
-  return { state: run.states.L, target: run.targets.L, trayPos: run.trayPos, records };
+  return { state: run.states.L, target: run.targets.L, trayPos: run.trayPos, trayStopped: run.trayStopped, records };
 }
 
 export function createProductView(deps) {
@@ -205,7 +205,8 @@ export function createProductView(deps) {
     flyTo(new THREE.Vector3(...v.pos), new THREE.Vector3(...v.tgt), instant);
   }
   function focusPart(k) {
-    if (st.mode === 'old') setMode('iot', true);
+    if (k === 'trayiot') return focusTraySensor();
+    if (st.mode === 'old' || st.mode === 'plant') setMode('iot', true);
     arms.iot.updateMatrixWorld(true);
     const f = arms.iot.getPartFocus(k);
     if (!f) return;
@@ -215,6 +216,17 @@ export function createProductView(deps) {
     flyTo(f.target.clone().add(f.offset), f.target);
   }
 
+  // ⑩ 承盤 IoT 不在手臂上：切到廠房實境，放大承盤上的感測器
+  function focusTraySensor() {
+    if (st.mode !== 'plant') setMode('plant', true);
+    plant.g.updateMatrixWorld(true);
+    const target = plant.env.traySensor.getWorldPosition(new THREE.Vector3());
+    stopSpin();
+    st.focused = 'trayiot';
+    $('#product-back').hidden = false;
+    flyTo(target.clone().add(new THREE.Vector3(0.55, 0.5, 1.05)), target);
+  }
+
   // ── 顯示模式 ────────────────────────────────
   function setMode(mode, keepFocus = false) {
     st.mode = mode;
@@ -222,7 +234,12 @@ export function createProductView(deps) {
     const isPlant = mode === 'plant';
     if (isPlant && !plant) buildPlant();
     studio.visible = !isPlant;
-    if (plant) { plant.g.visible = isPlant; plant.fx.setVisible(isPlant); }
+    if (plant) {
+      plant.g.visible = isPlant;
+      plant.fx.setVisible(isPlant);
+      plant.env.setTags(false, isPlant); // CSS2D 標籤不會跟著父物件隱藏，離開廠房實境時要另外關掉
+      if (!isPlant) plant.op.say('');
+    }
     scene.background = (isPlant ? PLANT_BG : STUDIO_BG).clone();
     scene.fog = isPlant ? new THREE.Fog(0x1b2028, 9, 26) : new THREE.Fog(0x18202b, 8, 18);
     arms.old.visible = mode === 'old' || both;
@@ -446,6 +463,7 @@ export function createProductView(deps) {
       plant.env.tray.position.y = -P.trayDrop.v * current.trayPos;
       const s = current.state;
       plant.env.paintBolts({ L: s }, time);
+      plant.env.setTraySensor(current.trayStopped ? 'stuck' : 'ok', time);
       plant.op.update(dt, time, {
         mode: current.target ? 'work' : 'wait',
         grip: current.target ? arms.iot.getGrip() : null,

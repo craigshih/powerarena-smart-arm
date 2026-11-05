@@ -193,6 +193,8 @@ export function createSim(deps) {
       if (r.type === 'SEQUENCE_ERROR' && b && b[r.boltIndex] === 'PENDING') b[r.boltIndex] = 'DONE';
       if (LEGACY_TEXT[r.type]) legacy.missed.push(r.type);
     }
+    // 改良後：作業員對手臂麥克風回覆「收到」或回報異常；現行手臂沒有麥克風
+    for (const v of out.voices) worlds.iot.ops[v.side].say(`「${v.text}」`, 'mic', 2.6);
     for (const a of out.alerts) {
       worlds.iot.ops[a.side].say(`「${a.say || a.text}」`, a.level === 'info' ? 'info' : 'voice', 3.2);
       if (a.level !== 'info' && LEGACY_TEXT[a.type]) worlds.old.ops[a.side].say('（沒有任何提示）', 'think', 3.2);

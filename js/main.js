@@ -255,6 +255,7 @@ function resetPanels() {
   ui.log = [];
   ui.notes = { L: null, R: null, all: null };
   ui.voiceLine = { L: null, R: null };
+  sysReset();
   ui.dirty = true;
 }
 
@@ -299,6 +300,8 @@ function consume(out, { silent = false } = {}) {
   if (out.records.length) live.get(ui.runId)?.push(...out.records);
   fx.onRecords(out.records, { pops: !silent });
   for (const r of out.records) {
+    sysRecord(r);
+    if (r.type === 'VOICE_ACK' || r.type === 'VOICE_REPORT') continue; // 由下方的麥克風紀錄顯示內容
     if (['TOOL_ENABLED', 'TRAY_LOWERING'].includes(r.type) && ui.log.length > 60) continue;
     const meta = EVENT_TYPES[r.type];
     const lv = { OK: 'ok', NG: 'alarm', BLOCKED: 'alarm', FAULT: 'fault', WARN: 'warn' }[r.result] ?? 'info';
@@ -307,6 +310,7 @@ function consume(out, { silent = false } = {}) {
     ui.log.unshift({ sim: (Date.parse(r.ts) - ui.epoch) / 1000, lv, text: `<b>${r.side}</b> ${meta.label}${where}${val}` });
   }
   for (const a of out.alerts) {
+    sysBroadcast(a, t);
     ui.voiceLine[a.side] = { text: a.say || a.text, level: a.level, t };
     if (!silent) ops[a.side].say(`「${a.say || a.text}」`, a.level === 'info' ? 'info' : 'voice', 3.2);
     if (!silent && FOLLOW[a.type] && $('#opt-follow').checked && viewNow === 'arm') {
@@ -317,6 +321,11 @@ function consume(out, { silent = false } = {}) {
       if (a.level !== 'info') chime(a.level);
       speak(a.say, LEVEL_RANK[a.level] >= 2);
     }
+  }
+  for (const v of out.voices) {
+    sysVoice(v);
+    if (!silent) ops[v.side].say(`「${v.text}」`, 'mic', 2.6);
+    ui.log.unshift({ sim: v.t, lv: 'mic', text: `<b>${v.side}</b> 麥克風：「${esc(v.text)}」${v.kind === 'report' ? '（已通知現場主管）' : ''}` });
   }
   for (const n of out.notes) {
     ui.notes[n.side] = { t: n.t, text: n.text };
@@ -329,7 +338,7 @@ function consume(out, { silent = false } = {}) {
   ui.log.sort((a, b) => b.sim - a.sim);
   ui.log.length = Math.min(ui.log.length, 120);
   for (const side of ['L', 'R']) arms[side].setState(ui.run.states[side]);
-  if (out.records.length || out.alerts.length || out.notes.length) ui.dirty = true;
+  if (out.records.length || out.alerts.length || out.notes.length || out.voices.length) ui.dirty = true;
 }
 
 function tick(dt) {
@@ -421,6 +430,71 @@ function renderSideCards() {
   boss.hidden = !ui.notes.all;
   if (ui.notes.all) boss.textContent = `現場主管：${ui.notes.all.text}`;
 }
+// ── 右側：系統接收（喇叭播報有沒有被收到、作業員麥克風回報、各裝置連線）──
+const sys = { feed: [], seen: {} };
+function sysReset() {
+  sys.feed = [];
+  sys.seen = { gunL: null, gunR: null, spk: null, micL: null, micR: null, cam: null };
+}
+sysReset();
+function sysBroadcast(a, t) {
+  if (!a.say) return;
+  sys.feed.push({ kind: 'spk', t, side: a.side, text: a.say, wait: a.level !== 'info', ack: null });
+  sys.feed.sort((x, y) => y.t - x.t);
+  sys.feed.length = Math.min(sys.feed.length, 12);
+  sys.seen.spk = t;
+}
+function sysVoice(v) {
+  sys.seen[`mic${v.side}`] = v.t;
+  // 回覆「收到」或直接口頭回報，都算作業員回應了最近一則待回覆的播報
+  const b = sys.feed.find((x) => x.kind === 'spk' && x.side === v.side && x.wait && x.ack == null);
+  if (b) Object.assign(b, { ack: v.t, reply: v.kind === 'ack' ? '收到' : '已口頭回報' });
+  if (v.kind === 'report') {
+    sys.feed.push({ kind: 'mic', t: v.t, side: v.side, text: v.text });
+    sys.feed.sort((x, y) => y.t - x.t);
+  }
+}
+function sysRecord(r) {
+  const t = (Date.parse(r.ts) - ui.epoch) / 1000;
+  if (r.type.startsWith('TIGHTEN') || r.type.startsWith('TOOL_')) sys.seen[`gun${r.side}`] = t;
+  if (r.type === 'VISION_MISMATCH') sys.seen.cam = t;
+}
+const TRAY_TEXT = { UP: '撐起', LOWERING: '下降中', DOWN: '已到位', STUCK: '卡住' };
+function sysHtml() {
+  const t = ui.run.t;
+  const S = ui.run.states;
+  const ago = (x) => (x == null ? '—' : t - x < 1.5 ? '剛剛' : `${Math.round(t - x)} 秒前`);
+  const waiting = (side) => sys.feed.some((x) => x.kind === 'spk' && x.side === side && x.wait && x.ack == null && t - x.t < 8);
+  const stuck = ui.run.trayStopped;
+  const tray = stuck ? 'STUCK' : S.L.tray;
+  const camBad = ['L', 'R'].some((k) => S[k].alarm?.type === 'VISION_MISMATCH');
+  const dev = (name, tone, text, last) => `<li class="dev d-${tone}"><i></i><b>${name}</b><span>${text}</span><time>${last}</time></li>`;
+  const devices = [
+    ...['L', 'R'].map((k) => dev(`扭矩槍 ${k}`, S[k].fault ? 'bad' : 'ok', S[k].fault ? '訊號中斷' : '連線中', ago(sys.seen[`gun${k}`]))),
+    dev('喇叭', 'ok', '連線中', ago(sys.seen.spk)),
+    ...['L', 'R'].map((k) => dev(`麥克風 ${k}`, waiting(k) ? 'listen' : 'ok', waiting(k) ? '等待回覆' : '連線中', ago(sys.seen[`mic${k}`]))),
+    dev('承盤 IoT', stuck ? 'warn' : 'ok', stuck ? '回報卡住' : '連線中', S.L.phase === 'IDLE' ? '—' : '剛剛'),
+    dev('攝影機（視覺）', camBad ? 'warn' : 'ok', camBad ? '與 IoT 不一致' : '比對一致', ago(sys.seen.cam)),
+  ].join('');
+  const mm = Math.round(ui.run.trayPos * P.trayDrop.v * 1000);
+  const total = Math.round(P.trayDrop.v * 1000);
+  const plc = S.L.tray === 'DOWN' ? '下降完成' : S.L.tray === 'LOWERING' ? '開始下降' : '未下降';
+  const feed = sys.feed.length ? sys.feed.map((x) => x.kind === 'spk'
+    ? `<li class="rx"><time>${fmtT(x.t)}</time><b>${x.side} 喇叭</b><q>${esc(x.text)}</q><span class="chk ok">系統已接收</span>${x.wait ? `<span class="chk ${x.ack != null ? 'ok' : 'wait'}">${x.ack != null ? `作業員：${x.reply}（${fmtT(x.ack)}）` : '等待作業員回覆'}</span>` : ''}</li>`
+    : `<li class="rx rx-mic"><time>${fmtT(x.t)}</time><b>${x.side} 麥克風</b><q>${esc(x.text)}</q><span class="chk ok">系統已接收</span><span class="chk ok">已通知現場主管</span></li>`).join('')
+    : '<li class="rx empty">按下播放後，喇叭播報與作業員回報會出現在這裡</li>';
+  return `
+    <section class="sys-card"><h3>裝置連線</h3><ul class="dev-list">${devices}</ul></section>
+    <section class="sys-card"><h3>承盤 IoT</h3>
+      <div class="tray-iot d-${stuck ? 'warn' : tray === 'DOWN' ? 'ok' : 'run'}">
+        <div class="tray-row"><b>${TRAY_TEXT[tray]}</b><span class="num">${mm} / ${total} mm</span></div>
+        <div class="tray-bar"><i style="width:${Math.round(ui.run.trayPos * 100)}%"></i></div>
+        <p class="muted small">感測器回傳高度約每 0.1 秒一次；PLC 訊號：${plc}${stuck ? '・感測器 8 秒沒動，判承盤異常' : ''}</p>
+      </div>
+    </section>
+    <section class="sys-card"><h3>喇叭播報與麥克風回報</h3><ol class="rx-list">${feed}</ol></section>`;
+}
+
 const lastHtml = new WeakMap();
 function paint(el, html) {
   if (lastHtml.get(el) === html) return;
@@ -437,6 +511,7 @@ function setTab(key) {
   tabNow = key;
   $$('.tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === key)));
   $$('[data-pane]').forEach((p) => (p.hidden = p.dataset.pane !== key));
+  ui.dirty = true;
 }
 $$('.tabs [data-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
 setTab('live');
@@ -839,6 +914,7 @@ function step(dt) {
     fx.update(dt, time, { states: ui.run.states, arms, tray: env.tray });
     if (viewport.dataset.fx !== fx.mood) viewport.dataset.fx = fx.mood;
     env.paintBolts(ui.run.states, time);
+    env.setTraySensor(ui.run.trayStopped ? 'stuck' : 'ok', time);
     env.setAndon(Math.max(...['L', 'R'].map((k) => LEVEL_RANK[ui.run.states[k].alarm?.level] ?? -1)), time);
     renderer.render(scene, view);
     labelRenderer.render(scene, view);
@@ -856,6 +932,7 @@ function step(dt) {
     if (viewNow === 'arm') {
       renderSideCards();
       paint($('#event-log'), logHtml());
+      if (tabNow === 'sys') paint($('#sys-pane'), sysHtml());
     }
   }
 }

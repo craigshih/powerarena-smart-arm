@@ -42,6 +42,9 @@ class Track {
     return this;
   }
   trigger() { this.push({ ev: { type: 'tool:trigger' } }); this.t += 0.4; return this; }
+  // 手臂麥克風：回覆「收到」、口頭回報異常（不移動時間軸）
+  ack(text = '收到', dt = 0) { return this.push({ ev: { type: 'voice:ack' }, voice: { kind: 'ack', text } }, dt); }
+  report(text, dt = 0) { return this.push({ ev: { type: 'voice:report', text }, voice: { kind: 'report', text } }, dt); }
   // 工具回報扭力。torque 省略時取該區域目標扭力 ±4%
   torque(zoneId, torque, angle) {
     const sp = this.ctx.spec[zoneId];
@@ -110,7 +113,8 @@ const TOOL_FAULT = {
     L.at(1.5).move('Z1L', 0).trigger();
     L.push({ ev: { type: 'tool:fault', code: 'COMM_LOST' } }, 0.5);
     L.note('工具與控制器通訊中斷（假設：接頭鬆脫），工具立刻停轉並鎖住，這一顆不計數', 0.7);
-    L.wait(3).note('現場主管重新插好接頭，控制器自我檢查通過');
+    L.report('扭矩槍沒反應', 1.4);
+    L.wait(3).note('現場主管收到回報到場，重新插好接頭，控制器自我檢查通過');
     L.push({ ev: { type: 'tool:recover' } }, 0.3);
     L.wait(1).note('作業員重鎖這一顆').trigger().torque('Z1L');
     L.wait(1.4).rest();
@@ -127,6 +131,7 @@ const VISION = {
     L.note('作業員鎖好左下螺絲，但扭力紀錄沒寫進系統（假設：資料寫入失敗）', 0.6);
     L.wait(1).push({ ev: { type: 'vision:check', zoneId: 'Z1L', boltIndex: 0 } });
     L.note('攝影機判定左下已鎖，IoT 卻沒有這一顆的扭力紀錄：判「系統異常 B：視覺與 IoT 不一致」', 0.2);
+    L.ack('收到', 0.9);
     L.wait(1.6).note('作業員原地重鎖補上紀錄；現場主管收到通知複查').trigger().torque('Z1L');
     L.wait(1.4).rest();
   }),
@@ -145,7 +150,8 @@ const TRAY_FAULT = {
       normalA(L).note('左下完成，工具已鎖定，等承盤');
       all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
       all(TRAY_DUE + 2, { trayStop: true });
-      all(TRAY_DUE + 8.6, { note: '承盤 8 秒沒降到底：判「系統異常：承盤異常」。作業員照常等待；現場主管收到通知到場' });
+      all(TRAY_DUE + 8.6, { note: '承盤 IoT 回報 8 秒沒降到底：判「系統異常：承盤異常」。作業員照常等待；現場主管收到通知到場' });
+      L.at(TRAY_DUE + 10).report('承盤卡住了');
       all(TRAY_DUE + 14, { note: '現場主管確認承盤卡住，按下承盤復歸' });
       all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });
       all(TRAY_DUE + 16.2, { ev: { type: 'tray:lowered' } });
@@ -172,7 +178,8 @@ export const SCENARIOS = [
     build: (ctx) => base(ctx, (L) => {
       normalA(L);
       L.at(13).note('等承盤時，作業員順手想先鎖左上螺絲').move('Z2L', 0).trigger();
-      L.wait(1.4).note('聽到「降前鎖附！」，握把閃紅並震動；作業員放開扳機，放回工具').rest();
+      L.ack('收到', 0.6);
+      L.wait(1.4).note('聽到「降前鎖附！」，握把閃紅並震動；作業員回覆「收到」，放開扳機、放回工具').rest();
     }),
   },
   {
@@ -182,7 +189,7 @@ export const SCENARIOS = [
     expect: '剩 15 秒預警，超時記錄，不停線。',
     build: (ctx) => base(ctx, (L) => {
       L.at(1.5).move('Z1L', 0).note('左下螺絲套筒對不上，作業員反覆調整');
-      L.wait(8).note('聽到「還剩 15 秒」，加快調整');
+      L.wait(8).note('聽到「還剩 15 秒」，回覆「收到」並加快調整').ack('收到', 0.4);
       L.wait(13.5).trigger().torque('Z1L');
       L.note('聽到「超過鎖附時間」：照常補完，系統記錄超時給現場主管追蹤', -1.2).wait(1).rest();
     }),
@@ -205,7 +212,7 @@ export const SCENARIOS = [
         L.at(1.5).note('作業員憑習慣先去鎖左上螺絲').move('Z2L', 0);
         if (ctx.encoder) {
           L.trigger().torque('Z2L');
-          L.wait(0.4).note('工具不轉、握把黃燈閃；廣播「錯誤步驟，請先鎖左下螺絲」，作業員改鎖左下');
+          L.wait(0.4).note('工具不轉、握把黃燈閃；廣播「錯誤步驟，請先鎖左下螺絲」，作業員回覆「收到」改鎖左下').ack('收到', 0.2);
           L.wait(0.2).bolt('Z1L', 0).rest();
         } else {
           L.trigger().torque('Z1L');
@@ -222,7 +229,7 @@ export const SCENARIOS = [
     expect: '判 NG 不計數，原地重鎖。',
     build: (ctx) => base(ctx, (L) => {
       L.at(1.5).note('套筒沒有完全咬合（假設原因），扭力只到 52 N·m', 2.6).bolt('Z1L', 0, { torque: 52, angle: 41 });
-      L.note('聽到「扭力不足，請重鎖」；作業員調整套筒，原地再扣一次扳機').retry('Z1L', 66);
+      L.ack('收到', -1).note('聽到「扭力不足，請重鎖」；作業員回覆「收到」，調整套筒原地再扣一次扳機').retry('Z1L', 66);
       L.rest();
     }),
   },
@@ -275,7 +282,7 @@ export function createRun(scenario, opts = {}) {
   }
 
   function advance(toT) {
-    const out = { records: [], alerts: [], notes: [], moves: [], steps: [] };
+    const out = { records: [], alerts: [], notes: [], moves: [], steps: [], voices: [] };
     toT = Math.min(toT, duration);
     while (idx < steps.length && steps[idx].t <= toT) {
       const st = steps[idx++];
@@ -289,6 +296,7 @@ export function createRun(scenario, opts = {}) {
       }
       if (st.trayStop) Object.assign(tray, { pos: trayAt(t), stopped: true });
       if (st.note) out.notes.push({ t, side: st.side, text: st.note });
+      if (st.voice) out.voices.push({ t, side: st.side, ...st.voice });
       if ('move' in st) {
         targets[st.side] = st.move;
         out.moves.push({ side: st.side, target: st.move });
@@ -304,6 +312,7 @@ export function createRun(scenario, opts = {}) {
     scenario, steps, duration, logic, states, targets,
     get t() { return t; },
     get trayPos() { return tray.pos; },
+    get trayStopped() { return tray.stopped; },
     get done() { return t >= duration; },
     advance,
     // 標出時間軸上的提示位置（播放前先離線跑一次）

@@ -2,6 +2,7 @@
 // 所有 3D 畫面的高台、車輛、引擎、承盤、四個螺絲孔位、滑軌、吊架與攝影機都和場域模型一致。
 // 場域模型裡的靜態作業員與舊式懸吊工具會藏起來，改由會動的作業員與改良版手臂取代。
 import * as THREE from 'three';
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { buildStation } from './twin/scene.js';
 import { PHASE_COLOR } from './twin/params.js';
 
@@ -39,6 +40,39 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
       Object.assign(o.material, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     }
   });
+  // 承盤 IoT 感測器：裝在承盤車頭那一面，跟著承盤上下；LED 綠＝回傳中、紫閃＝回報卡住
+  const traySensor = new THREE.Group();
+  const sensorLed = new THREE.MeshStandardMaterial({ color: 0x1e232c, emissive: 0x3ccf6b, emissiveIntensity: 1.2, roughness: 0.3 });
+  {
+    const dark = new THREE.MeshStandardMaterial({ color: 0x2b3446, roughness: 0.5, metalness: 0.4 });
+    const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; traySensor.add(o); return o; };
+    add(new THREE.BoxGeometry(0.14, 0.07, 0.04), dark, 0, 0, 0);
+    add(new THREE.CylinderGeometry(0.004, 0.004, 0.1, 6), dark, 0.055, 0.085, 0);
+    add(new THREE.SphereGeometry(0.012, 12, 8), sensorLed, -0.04, 0.0, 0.022);
+    add(new THREE.CylinderGeometry(0.014, 0.014, 0.01, 16), new THREE.MeshStandardMaterial({ color: 0x9fb4cc, roughness: 0.2, metalness: 0.6 }), 0.02, 0, 0.022).rotation.x = Math.PI / 2;
+    const info = { title: '⑩ 承盤 IoT 感測器', id: 'env-tray-iot', rows: [
+      ['作用', '持續回傳承盤高度、下降進度與是否到位，和 PLC 訊號互相比對'], ['回傳', '約每 0.1 秒一次（假設）'], ['位置', '承盤車頭那一面（示意，待確認）']] };
+    traySensor.traverse((o) => { if (o.isMesh) o.userData.info = info; });
+    const tray = station.tray;
+    tray.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(tray);
+    const c = bb.getCenter(new THREE.Vector3());
+    traySensor.position.copy(tray.worldToLocal(new THREE.Vector3(c.x + 0.3, bb.max.y - 0.045, bb.max.z + 0.022)));
+    tray.add(traySensor);
+    const el = document.createElement('div');
+    el.className = 'tag tag-step tag-iot';
+    el.textContent = '⑩ 承盤 IoT';
+    const tag = new CSS2DObject(el);
+    tag.center.set(0.5, 1);
+    tag.position.set(0, 0.2, 0);
+    traySensor.add(tag);
+  }
+  function setTraySensor(mode, time) {
+    const blink = Math.floor(time * 2.8) % 2 === 0;
+    sensorLed.emissive.setHex(mode === 'stuck' ? 0xb07cff : 0x3ccf6b);
+    sensorLed.emissiveIntensity = mode === 'stuck' ? (blink ? 2.4 : 0.3) : 0.9 + 0.5 * Math.sin(time * 10);
+  }
+
   setLayer('people', false);
   setLayer('frustums', frustums);
   setLayer('dims', dims);
@@ -76,6 +110,8 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
   return {
     station,
     tray: station.tray,
+    traySensor,
+    setTraySensor,
     pickables,
     setLayer,
     setTags,

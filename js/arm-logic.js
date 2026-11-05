@@ -8,6 +8,7 @@
 //   tray:lowering / tray:lowered                 承盤 PLC 訊號
 //   tool:fault    { code }  /  tool:recover      扭矩槍訊號中斷等工具異常與恢復
 //   vision:check  { zoneId, boltIndex }          攝影機（主管端視覺模組）判定這一顆已鎖
+//   voice:ack / voice:report { text }           手臂麥克風：作業員回覆「收到」／口頭回報異常
 //   bypass:on / bypass:off                       現場主管鑰匙開關（降級模式）
 //   timer                                        定時檢查（超時、承盤逾時）
 //
@@ -42,6 +43,8 @@ export const EVENT_TYPES = {
   TOOL_FAULT: { label: '扭矩槍訊號中斷', result: 'FAULT', category: 'TOOL' },
   TOOL_RECOVERED: { label: '扭矩槍恢復', result: 'INFO', category: '' },
   VISION_MISMATCH: { label: '視覺與 IoT 不一致', result: 'FAULT', category: 'VISION' },
+  VOICE_ACK: { label: '作業員回覆收到', result: 'INFO', category: '' },
+  VOICE_REPORT: { label: '作業員口頭回報', result: 'WARN', category: '' },
   BYPASS_ON: { label: '降級模式開啟', result: 'WARN', category: '' },
   BYPASS_OFF: { label: '降級模式關閉', result: 'INFO', category: '' },
   CYCLE_COMPLETE: { label: '本車完成', result: 'OK', category: '' },
@@ -370,6 +373,18 @@ export function createArmLogic(options = {}) {
       s.attempt = null;
       rec('VISION_MISMATCH', { zoneId, boltIndex });
       alarm('VISION_MISMATCH', 'alarm', `系統異常 B：${zone.label}沒有扭力紀錄`, '紀錄不一致，請重鎖並通知現場主管');
+    },
+
+    // 手臂麥克風（只辨識固定關鍵詞）：回覆「收到」代表提示有被聽到；口頭回報則記一筆並通知現場主管，
+    // 喇叭回播「已收到回報」讓作業員知道系統收到了
+    'voice:ack'() {
+      if (s.phase === 'IDLE') return;
+      rec('VOICE_ACK');
+    },
+    'voice:report'(e) {
+      if (s.phase === 'IDLE') return;
+      rec('VOICE_REPORT');
+      alarm('VOICE_REPORT', 'info', `已收到回報：${e.text ?? ''}`, '已收到回報，已通知現場主管', 3);
     },
 
     'tool:recover'() {
