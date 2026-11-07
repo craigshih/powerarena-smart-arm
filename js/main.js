@@ -10,7 +10,7 @@ import { groupSelect } from './group-select.js';
 import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
 import { createAlertFx } from './alert-fx.js';
-import { createProductView } from './product-view.js';
+import { createProductView, DEMOS, DEMO_GROUPS } from './product-view.js';
 import { createStationView } from './station-view.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -206,7 +206,8 @@ let currentSpec = specFrom(store.get('spec', null));
 
 // ── 播放器 ───────────────────────────────────
 const ui = {
-  scenarioId: SCENARIOS.some((s) => s.id === store.get('scenario')) ? store.get('scenario') : 'normal',
+  // 只回到選單裡有的情境（正常流程、降前鎖附、扭力不足、承盤異常、扭矩槍訊號中斷）
+  scenarioId: ['normal', 'early', 'ng', 'automation', 'tool'].includes(store.get('scenario')) ? store.get('scenario') : 'normal',
   speed: 2,
   encoder: true,
   playing: false,
@@ -350,16 +351,28 @@ function tick(dt) {
 
 // ── 左側：情境清單、播放控制 ─────────────────────
 // 情境用下拉選單，內容與順序同主管端模組
-// 情境選單照「正常／提醒／錯誤」分組，和手臂介紹的狀態選單一樣；超過鎖附時間只預警、記錄，不鎖工具，歸提醒
-const SCENARIO_GROUPS = [['正常', ['normal']], ['提醒', ['timeout']],
-  ['錯誤', ['early', 'sequence', 'ng', 'tool', 'vision', 'toolC']]];
-$('#scenario-select').innerHTML = SCENARIO_GROUPS.map(([g, ids]) => `<optgroup label="${g}">${ids
-  .map((id) => `<option value="${id}">${scenarioById(id).title}</option>`).join('')}</optgroup>`).join('');
+// 情境選單和手臂介紹的狀態選單同一份（照報告附圖：正常／提醒／錯誤）
+// 正常、提醒的項目是某段情境裡的一個時刻：載入該情境、跳到那一刻接著播；錯誤項目從頭播整段情境
+const PICK = Object.fromEntries(DEMOS.map((d) => [d.key, d]));
+const MOMENT = { ready: 1, running: 1, done: 1, warn: 1, wait: 1 };
+const PICK_OF_SCENARIO = Object.fromEntries(DEMOS.filter((d) => !MOMENT[d.key]).map((d) => [d.id, d.key]));
+PICK_OF_SCENARIO.normal = 'ready';
+$('#scenario-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
+  .map((k) => `<option value="${k}">${PICK[k].menu ?? PICK[k].label}</option>`).join('')}</optgroup>`).join('');
+const MENU_KEYS = new Set(DEMO_GROUPS.flatMap(([, keys]) => keys));
 function renderScenarioList() {
-  $('#scenario-select').value = ui.scenarioId;
+  const cur = PICK[ui.pick];
+  const k = cur && cur.id === ui.scenarioId ? ui.pick : PICK_OF_SCENARIO[ui.scenarioId];
+  $('#scenario-select').value = MENU_KEYS.has(k) ? k : 'ready';
+}
+function pickScenario(key) {
+  const d = PICK[key];
+  ui.pick = key;
+  load(d.id, { autoplay: !MOMENT[key] });
+  if (MOMENT[key]) { seek(d.t); if (!ui.run.done) play(); }
 }
 groupSelect($('#scenario-select'));
-$('#scenario-select').addEventListener('change', (e) => load(e.target.value, { autoplay: true }));
+$('#scenario-select').addEventListener('change', (e) => pickScenario(e.target.value));
 $('#t-play').addEventListener('click', () => (ui.playing ? pause() : play()));
 $('#t-restart').addEventListener('click', () => load(ui.scenarioId, { autoplay: true }));
 $$('[data-speed]').forEach((b) => b.addEventListener('click', () => {

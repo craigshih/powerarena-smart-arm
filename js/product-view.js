@@ -43,13 +43,18 @@ export const DEMOS = [
   { key: 'sequence', label: '錯誤步驟', id: 'sequence', t: 3.5, old: '先鎖上方也鎖得下去', look: ['#ff4fd8', 'swap', '錯誤步驟・先鎖左下', true] },
   { key: 'ng', label: '扭力不足', id: 'ng', t: 4.8, old: '沒有量測', look: ['#ff3b4f', 'x', '扭力不足・重鎖', true],
     use: { title: '哪一顆沒鎖好', act: '原地重鎖' } },
-  { key: 'fault', label: '系統異常 A：機器手臂 L 失聯', id: 'tool', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '手臂 L 失聯・已鎖住', true],
+  { key: 'tray', label: '承盤異常', id: 'automation', t: 36, old: '工具仍能轉', look: ['#b07cff', 'gear', '承盤異常・等現場主管'] },
+  { key: 'fault', label: '系統異常 A：機器手臂 L 失聯', menu: '扭矩槍訊號中斷', id: 'tool', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '手臂 L 失聯・已鎖住', true],
     use: { title: '開口回報', act: '說「扭矩槍沒反應」，現場主管收到通知' } },
   { key: 'vision', label: '系統異常 B：視覺與 IoT 不一致', id: 'vision', t: 5.6, old: '漏記沒人發現', look: ['#2dc7ff', 'eye', '視覺與 IoT 不一致', true] },
   { key: 'faultC', label: '系統異常 C：機器手臂 R 失聯', id: 'toolC', side: 'R', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '手臂 R 失聯・已鎖住', true] },
   { key: 'done', label: '本車完成', id: 'normal', t: 36, old: '沒有完成確認', look: ['#3ccf6b', 'check', '本車完成'],
     use: { title: '鎖完確認', act: '每顆都是綠點' } },
 ];
+// 狀態選單：分組、項目與文字一字不差照報告附圖；情境演練的選單用同一份
+// 選單文字用 menu（沒有就用 label）
+export const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait']],
+  ['錯誤', ['early', 'ng', 'tray', 'fault']]];
 const ICON = {
   check: '<path d="M4 12l5 5L20 6"/>',
   spin: '<path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>',
@@ -413,10 +418,8 @@ export function createProductView(deps) {
   $('#product-spin').addEventListener('change', (e) => (controls.autoRotate = e.target.checked));
   $('#product-new').addEventListener('change', renderFeature);
   $('#product-back').addEventListener('click', () => overview());
-  const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait', 'timeout']],
-    ['錯誤', ['early', 'sequence', 'ng', 'fault', 'vision', 'faultC']]];
   $('#demo-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
-    .map((k) => `<option value="${k}">${DEMOS.find((d) => d.key === k).label}</option>`).join('')}</optgroup>`).join('');
+    .map((k) => { const d = DEMOS.find((x) => x.key === k); return `<option value="${k}">${d.menu ?? d.label}</option>`; }).join('')}</optgroup>`).join('');
   groupSelect($('#demo-select'));
   $('#demo-select').addEventListener('change', (e) => {
     unlockAudio();
