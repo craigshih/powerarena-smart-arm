@@ -349,7 +349,10 @@ function tick(dt) {
 
 // ── 左側：情境清單、播放控制 ─────────────────────
 // 情境用下拉選單，內容與順序同主管端模組
-$('#scenario-select').innerHTML = SCENARIOS.map((s) => `<option value="${s.id}">${s.title}</option>`).join('');
+// 情境選單分組，和手臂介紹的狀態選單同一種樣子
+const SCENARIO_GROUPS = [['正常', ['normal']], ['錯誤', ['early', 'timeout', 'sequence', 'ng', 'tool', 'vision', 'toolC']]];
+$('#scenario-select').innerHTML = SCENARIO_GROUPS.map(([g, ids]) => `<optgroup label="${g}">${ids
+  .map((id) => `<option value="${id}">${scenarioById(id).title}</option>`).join('')}</optgroup>`).join('');
 function renderScenarioList() {
   $('#scenario-select').value = ui.scenarioId;
 }
