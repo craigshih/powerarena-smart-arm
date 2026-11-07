@@ -13,6 +13,9 @@ import { buildEnvironment, addFactoryBackdrop } from './environment.js';
 import { createOperator } from './operator.js';
 import { createAlertFx } from './alert-fx.js';
 
+// 只有工具本身結合 IoT 的部件保留新舊對比，其他新增部件直接說作用
+const KEEP_VS = ['enable', 'torque'];
+const PLC_TONE = { direct: ['直接', 'd-direct'], indirect: ['間接', 'd-indirect'], arch: ['視架構', 'd-arch'], none: ['不經過', 'd-none'] };
 const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const NEW_KEYS = ARM_PARTS.map((p) => p.key);
 const HANG_Y = P.railY.v;
@@ -25,6 +28,7 @@ const BASE = {
 };
 
 // 狀態示範：情境與時刻；舊款同一時刻的樣子；look 是新款手臂上的顏色與圖示
+// 錯誤狀態照最終版情境清單（同主管端模組）；承盤異常不在清單裡
 export const DEMOS = [
   { key: 'ready', label: '可鎖附', id: 'normal', t: 2.0, old: '隨時可轉', look: ['#3ccf6b', 'check', '可鎖附'],
     use: { title: '該鎖哪一顆', act: '白框標出下一顆' } },
@@ -32,13 +36,16 @@ export const DEMOS = [
   { key: 'warn', label: '即將超時', id: 'timeout', t: 12, old: '沒有倒數', look: ['#f0b545', 'clock', '即將超時'],
     use: { title: '還剩多少時間', act: '倒數變黃' } },
   { key: 'wait', label: '等承盤', id: 'normal', t: 15, old: '仍然能轉', look: ['#f0b545', 'lock', '已鎖定・等承盤'] },
-  { key: 'early', label: '降前鎖附', id: 'early', t: 15, old: '工具照轉，承盤沒降就鎖上', oldRun: true, look: ['#e0303a', 'stop', '降前鎖附・已攔下', true],
-    use: { title: '為什麼被攔下', act: '放開扳機，等承盤' } },
+  { key: 'early', label: '降前鎖附', id: 'early', t: 15.8, old: '工具照轉，承盤沒降就鎖上', oldRun: true, look: ['#e0303a', 'stop', '降前鎖附・已攔下', true],
+    use: { title: '為什麼被攔下', act: '放開扳機，說「收到」' } },
+  { key: 'timeout', label: '超過鎖附時間', id: 'timeout', t: 24.5, old: '超時沒人知道', look: ['#ff7a1a', 'clock', '超過鎖附時間', true] },
+  { key: 'sequence', label: '錯誤步驟', id: 'sequence', t: 3.5, old: '先鎖上方也鎖得下去', look: ['#ff4fd8', 'swap', '錯誤步驟・先鎖左下', true] },
   { key: 'ng', label: '扭力不足', id: 'ng', t: 4.8, old: '沒有量測', look: ['#ff3b4f', 'x', '扭力不足・重鎖', true],
     use: { title: '哪一顆沒鎖好', act: '原地重鎖' } },
-  { key: 'tray', label: '承盤異常', id: 'automation', t: 36, old: '工具仍能轉', look: ['#b07cff', 'gear', '承盤異常・等現場主管'],
-    use: { title: '不是自己的錯', act: '等現場主管復歸' } },
-  { key: 'fault', label: '扭矩槍訊號中斷', id: 'tool', t: 4.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '訊號中斷・已鎖住', true] },
+  { key: 'fault', label: '系統異常 A：扭矩槍訊號中斷', id: 'tool', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '訊號中斷・已鎖住', true],
+    use: { title: '開口回報', act: '說「扭矩槍沒反應」，現場主管收到通知' } },
+  { key: 'vision', label: '系統異常 B：視覺與 IoT 不一致', id: 'vision', t: 5.6, old: '漏記沒人發現', look: ['#2dc7ff', 'eye', '視覺與 IoT 不一致', true] },
+  { key: 'faultC', label: '系統異常 C：扭矩槍訊號中斷', id: 'toolC', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '訊號中斷・已鎖住', true] },
   { key: 'done', label: '本車完成', id: 'normal', t: 36, old: '沒有完成確認', look: ['#3ccf6b', 'check', '本車完成'],
     use: { title: '鎖完確認', act: '每顆都是綠點' } },
 ];
@@ -52,6 +59,8 @@ const ICON = {
   gear: '<circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   free: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5"/>',
+  swap: '<path d="M4 8h14l-4-4M20 16H6l4 4"/>',
+  eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
 };
 const icon = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
 
@@ -216,7 +225,7 @@ export function createProductView(deps) {
     flyTo(f.target.clone().add(f.offset), f.target);
   }
 
-  // ⑩ 承盤 IoT 不在手臂上：切到廠房實境，放大承盤上的感測器
+  // ⑩ 承盤感測器不在手臂上：切到廠房實境，放大承盤上的感測器
   function focusTraySensor() {
     if (st.mode !== 'plant') setMode('plant', true);
     plant.g.updateMatrixWorld(true);
@@ -295,6 +304,8 @@ export function createProductView(deps) {
     sb.innerHTML = `${icon(ic)}<b>${esc(label)}</b>${a ? `<span>「${esc(a.say || a.text)}」</span>` : ''}`;
     $('#demo-iot').innerHTML = `<b>新款</b>${esc(label)}`;
     $('#demo-old').innerHTML = `<b>舊款</b>${esc(d.old)}`;
+    // 舊款陳述只在看得到舊款手臂時出現
+    $('#demo-old').hidden = !(st.mode === 'old' || st.mode === 'both');
     drawScreens();
     if (sayIt && a?.say) speak(a.say, true);
     if (sayIt && (st.mode === 'iot' || st.mode === 'plant')) focusStatus();
@@ -347,10 +358,16 @@ export function createProductView(deps) {
       $('#feature-detail').innerHTML = `
         <div class="feature-head"><span class="fnum">${NUM[p.n]}</span><h3>${esc(p.title)}</h3></div>
         ${k === 'screen' ? '<div class="mini-screen"><canvas id="pd-mini" width="480" height="320" aria-label="手臂螢幕目前畫面"></canvas></div>' : ''}
-        <div class="feature-vs">
+        ${KEEP_VS.includes(k) ? `<div class="feature-vs">
           <p class="vs-new"><i>新款</i>${esc(p.short)}</p>
           <p class="vs-old"><i>舊款</i>${esc(p.beforeShort)}</p>
-        </div>`;
+        </div>` : `<p class="feature-one">${esc(p.short)}</p>`}
+        ${p.roles ? `<div class="plc-roles">
+          <h4>PLC 在各異常情境的角色</h4>
+          <ul>${p.roles.map(([name, lv, basis, role]) => `<li>
+            <span class="plc-lv ${PLC_TONE[lv][1]}">${PLC_TONE[lv][0]}</span>
+            <b>${esc(name)}</b><small>${esc(basis)} → ${esc(role)}</small></li>`).join('')}</ul>
+        </div>` : ''}`;
     }
     document.querySelectorAll('[data-feature]').forEach((b) => b.classList.toggle('on', b.dataset.feature === k));
     arms.iot.highlight($('#product-new').checked ? NEW_KEYS : k);
@@ -390,7 +407,8 @@ export function createProductView(deps) {
   $('#product-spin').addEventListener('change', (e) => (controls.autoRotate = e.target.checked));
   $('#product-new').addEventListener('change', renderFeature);
   $('#product-back').addEventListener('click', () => overview());
-  const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait']], ['錯誤', ['early', 'ng', 'tray', 'fault']]];
+  const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait']],
+    ['錯誤', ['early', 'timeout', 'sequence', 'ng', 'fault', 'vision', 'faultC']]];
   $('#demo-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
     .map((k) => `<option value="${k}">${DEMOS.find((d) => d.key === k).label}</option>`).join('')}</optgroup>`).join('');
   $('#demo-select').addEventListener('change', (e) => {
@@ -412,6 +430,12 @@ export function createProductView(deps) {
     st.demo = b.dataset.use;
     applyDemo(true);
   });
+  // 手臂螢幕規格（數值集中在 arm-params.js，假設值標「假設」）
+  const SCREEN_SPEC = ['screenSize', 'screenRes', 'screenBrightness', 'screenRating', 'screenDistance', 'screenMount', 'screenInput', 'screenLink'];
+  $('#pd-spec').innerHTML = `<h4>螢幕規格</h4><dl class="spec-list">${SCREEN_SPEC.map((k) => {
+    const x = P[k];
+    return `<dt>${esc(x.label)}</dt><dd>${esc(x.v)}${x.unit ? ` ${esc(x.unit)}` : ''}${x.status === 'assumed' ? '<span class="chip chip-assumed">假設</span>' : ''}${x.note ? `<small>${esc(x.note)}</small>` : ''}</dd>`;
+  }).join('')}</dl>`;
   $('#pd-device-notes').addEventListener('change', (e) => $('#pd-device').classList.toggle('notes', e.target.checked));
   $('#pd-device-full').addEventListener('click', () => {
     const el = $('#pd-device');

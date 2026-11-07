@@ -60,17 +60,20 @@ export const P = {
   keyModes: p('正常／降級', '', '現場主管鑰匙開關', SRC.ASM, 'assumed'),
 
   // ── 手臂螢幕 ──────────────────────────────
-  screenSize: p(10.1, '吋', '手臂螢幕尺寸', SRC.ASM, 'assumed', '工業級觸控面板，只顯示不需操作'),
+  screenSize: p(10.1, '吋', '手臂螢幕尺寸', SRC.ASM, 'assumed', '工業級面板，手套也看得清楚'),
+  screenRes: p('1280 × 800', '', '解析度', SRC.ASM, 'assumed', '彎腰時一眼看清步驟數字'),
+  screenInput: p('不需觸控', '', '操作方式', SRC.ASM, 'assumed', '只顯示；回覆用手臂麥克風，不增加動作'),
+  screenLink: p('乙太網路＋24V 供電', '', '連線與供電', SRC.ASM, 'assumed', '由控制器供電與推送畫面，一條線沿手臂佈線'),
   screenBrightness: p(1000, 'nits', '螢幕亮度', SRC.ASM, 'assumed', '廠房頂燈下仍看得清楚'),
   screenRating: p('IP65・防震', '', '防護等級', SRC.ASM, 'assumed', '油污、粉塵與手臂晃動'),
   screenDistance: p(0.5, 'm', '作業員眼睛到螢幕距離', SRC.ASM, 'assumed', '彎腰鎖附時'),
   screenMount: p('平衡器外管下端', '', '安裝位置', SRC.ASM, 'assumed', '跟著工具移動，不在工具本體'),
 
-  // ── 手臂麥克風與承盤 IoT ────────────────────
+  // ── 手臂麥克風與承盤 ────────────────────
   micType: p('指向性降噪麥克風', '', '手臂麥克風', SRC.ASM, 'assumed', '裝在手臂螢幕旁，廠區噪音下只收近距離人聲'),
   micKeywords: p('收到／扭矩槍沒反應／承盤卡住', '', '語音辨識關鍵詞', SRC.ASM, 'assumed', '只辨識固定關鍵詞，不做自由對話'),
-  trayIotSensor: p('雷射測距＋無線傳輸', '', '承盤 IoT 感測器', SRC.ASM, 'assumed', '裝在承盤側面，回報高度與是否到位'),
-  trayIotRate: p(10, 'Hz', '承盤 IoT 回傳頻率', SRC.ASM, 'assumed'),
+  trayIotSensor: p('雷射測距＋無線傳輸', '', '承盤感測器', SRC.ASM, 'assumed', '裝在承盤側面，回報高度與是否到位'),
+  trayIotRate: p(10, 'Hz', '承盤感測器回傳頻率', SRC.ASM, 'assumed'),
 
   // ── 追溯欄位 ──────────────────────────────
   station: p('ENG-07', '', '工位代號', SRC.ASM, 'assumed'),
@@ -139,6 +142,6 @@ export const PARAM_GROUPS = [
   ['承盤與時序', ['trayDrop', 'trayDuration', 'trayFaultTimeout', 'phaseNominal', 'phaseLimit', 'phaseWarnLead', 'checkpointLead', 'alarmHold']],
   ['工具與感測', ['batteryLowPct', 'commTimeout', 'encoderZoneTol', 'station']],
   ['零件規格', ['controllerPsets', 'toolTorqueRange', 'toolAngleRes', 'ringSignals', 'speakerLevel', 'encoderRes', 'plcSignals', 'keyModes']],
-  ['手臂螢幕', ['screenSize', 'screenBrightness', 'screenRating', 'screenDistance', 'screenMount']],
-  ['麥克風與承盤 IoT', ['micType', 'micKeywords', 'trayIotSensor', 'trayIotRate']],
+  ['手臂螢幕', ['screenSize', 'screenRes', 'screenBrightness', 'screenRating', 'screenDistance', 'screenMount', 'screenInput', 'screenLink']],
+  ['麥克風與承盤', ['micType', 'micKeywords', 'trayIotSensor', 'trayIotRate']],
 ];

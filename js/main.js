@@ -8,7 +8,6 @@ import { createSmartArm, drawArmScreen, PRINCIPLES } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun, generateHistory } from './scenarios.js';
 import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
-import { createSim } from './sim.js';
 import { createAlertFx } from './alert-fx.js';
 import { createProductView } from './product-view.js';
 import { createStationView } from './station-view.js';
@@ -84,7 +83,7 @@ const PRESETS = {
   orbit: { pos: [4.3, 4.9, 2.9], tgt: [0.1, 2.45, 1.45], fov: 42 },
   armL: { pos: [-0.9, 3.9, 3.3], tgt: [0.75, 2.85, 1.5], fov: 42 },
   armR: { pos: [0.9, 3.9, 3.3], tgt: [-0.75, 2.85, 1.5], fov: 42 },
-  // 從作業員肩膀後方看：看得到手臂螢幕正面、握把燈與螺絲
+  // 出錯時跟過去的鏡頭：從作業員肩膀後方看，看得到手臂螢幕正面、握把燈與螺絲（不放在視角按鈕裡）
   toolL: { pos: [1.55, 4.15, 2.85], tgt: [0.62, 2.55, 1.5], fov: 40 },
   toolR: { pos: [-1.55, 4.15, 2.85], tgt: [-0.62, 2.55, 1.5], fov: 40 },
   top: { pos: [0.01, 7.8, 1.7], tgt: [0, 2, 1.6], fov: 40 },
@@ -417,7 +416,7 @@ function renderSideCards() {
     const sig = signalsFor(s);
     b.pill.className = `pill ${RING_TONE[sig.ring]}`;
     b.pill.textContent = sig.label;
-    const key = JSON.stringify([s.phase, s.tray, s.tool, s.lockReason, s.alarm?.type, s.alarm?.text, s.bolts, s.expected, s.remaining == null ? null : Math.ceil(s.remaining)]);
+    const key = JSON.stringify([s.phase, s.tray, s.tool, s.lockReason, s.alarm?.type, s.alarm?.text, s.bolts, s.expected, s.remaining == null ? null : Math.ceil(s.remaining), s.heard && s.t - s.heard.at < 5 ? s.heard : null]);
     if (key !== b.key) { b.key = key; drawArmScreen(b.ctx, s, side); }
     const v = ui.voiceLine[side];
     b.voice.classList.toggle('hot', !!v && v.level !== 'info');
@@ -473,7 +472,7 @@ function sysHtml() {
     ...['L', 'R'].map((k) => dev(`扭矩槍 ${k}`, S[k].fault ? 'bad' : 'ok', S[k].fault ? '訊號中斷' : '連線中', ago(sys.seen[`gun${k}`]))),
     dev('喇叭', 'ok', '連線中', ago(sys.seen.spk)),
     ...['L', 'R'].map((k) => dev(`麥克風 ${k}`, waiting(k) ? 'listen' : 'ok', waiting(k) ? '等待回覆' : '連線中', ago(sys.seen[`mic${k}`]))),
-    dev('承盤 IoT', stuck ? 'warn' : 'ok', stuck ? '回報卡住' : '連線中', S.L.phase === 'IDLE' ? '—' : '剛剛'),
+    dev('承盤感測器', stuck ? 'warn' : 'ok', stuck ? '回報卡住' : '連線中', S.L.phase === 'IDLE' ? '—' : '剛剛'),
     dev('攝影機（視覺）', camBad ? 'warn' : 'ok', camBad ? '與 IoT 不一致' : '比對一致', ago(sys.seen.cam)),
   ].join('');
   const mm = Math.round(ui.run.trayPos * P.trayDrop.v * 1000);
@@ -485,7 +484,7 @@ function sysHtml() {
     : '<li class="rx empty">按下播放後，喇叭播報與作業員回報會出現在這裡</li>';
   return `
     <section class="sys-card"><h3>裝置連線</h3><ul class="dev-list">${devices}</ul></section>
-    <section class="sys-card"><h3>承盤 IoT</h3>
+    <section class="sys-card"><h3>承盤</h3>
       <div class="tray-iot d-${stuck ? 'warn' : tray === 'DOWN' ? 'ok' : 'run'}">
         <div class="tray-row"><b>${TRAY_TEXT[tray]}</b><span class="num">${mm} / ${total} mm</span></div>
         <div class="tray-bar"><i style="width:${Math.round(ui.run.trayPos * 100)}%"></i></div>
@@ -532,10 +531,9 @@ function renderParams() {
 }
 
 // ── 畫面切換 ─────────────────────────────────
-const VIEWS = ['station', 'product', 'arm', 'settings', 'sim', 'compare', 'trace'];
-const GROUP_OF = { station: 'station', product: 'arm', arm: 'arm', settings: 'arm', sim: 'vs', compare: 'vs', trace: 'trace' };
+const VIEWS = ['station', 'product', 'arm', 'settings', 'trace'];
+const GROUP_OF = { station: 'station', product: 'arm', arm: 'arm', settings: 'arm', trace: 'trace' };
 let stationView = null;
-let sim = null;
 let productView = null;
 let viewNow = 'station';
 function go(v, { push = true } = {}) {
@@ -554,11 +552,6 @@ function go(v, { push = true } = {}) {
     stationView ||= createStationView({ $ });
     requestAnimationFrame(stationView.resize);
   }
-  if (v === 'sim') {
-    pause();
-    sim ||= createSim({ $, esc, speak, chime, unlockAudio, getSpec: () => currentSpec });
-    requestAnimationFrame(sim.resize);
-  } else sim?.pause();
   if (v === 'product') {
     pause();
     productView ||= createProductView({ $, esc, speak, unlockAudio, getSpec: () => currentSpec });
@@ -575,8 +568,16 @@ const navScroll = $('.nav-scroll');
 const navEnd = () => navScroll.classList.toggle('at-end', navScroll.scrollLeft + navScroll.clientWidth >= navScroll.scrollWidth - 4);
 navScroll.addEventListener('scroll', navEnd, { passive: true });
 
-// 比較頁的情境連結
-$$('[data-play]').forEach((b) => b.addEventListener('click', () => { go('arm'); load(b.dataset.play, { autoplay: true }); }));
+// 情境演練：右側面板可收起，3D 畫面變寬
+const sideToggle = $('#side-toggle');
+sideToggle.addEventListener('click', () => {
+  const app = $('.view[data-view="arm"]');
+  const closed = app.classList.toggle('side-closed');
+  sideToggle.setAttribute('aria-expanded', String(!closed));
+  sideToggle.title = closed ? '展開右側面板' : '收起右側面板';
+  sideToggle.lastElementChild.textContent = closed ? '面板' : '收起';
+  requestAnimationFrame(resize);
+});
 
 // ── 鎖附參數設定 ─────────────────────────────────
 let draft = specValues(currentSpec);
@@ -860,12 +861,6 @@ $('#f-pdf').addEventListener('click', async () => {
   }
 });
 
-// 比較頁表格在手機改卡片時需要欄名
-$$('table.compare').forEach((t) => {
-  const names = $$('thead th', t).map((th) => th.textContent);
-  $$('tbody tr', t).forEach((tr) => [...tr.children].forEach((c, i) => c.tagName === 'TD' && c.setAttribute('data-label', names[i])));
-});
-
 // ── 迴圈 ─────────────────────────────────────
 function resize() {
   const w = viewport.clientWidth;
@@ -920,7 +915,6 @@ function step(dt) {
     labelRenderer.render(scene, view);
   }
 
-  if (viewNow === 'sim' && sim) sim.frame(dt, time);
   if (viewNow === 'product' && productView) productView.frame(dt, time);
   if (viewNow === 'station' && stationView) stationView.frame(dt, time);
 
@@ -942,7 +936,7 @@ function frame() {
 }
 // 測試用：網址加 ?debug 時可用 __step(dt, n) 手動推進畫面（背景分頁不跑動畫時）
 if (new URLSearchParams(location.search).has('debug')) window.__step = (dt = 1 / 30, n = 1) => { for (let i = 0; i < n; i++) step(dt); };
-if (new URLSearchParams(location.search).has('debug')) window.__views = { get product() { return productView; }, get sim() { return sim; }, get station() { return stationView; }, main: { scene, arms, ops, env }, resize };
+if (new URLSearchParams(location.search).has('debug')) window.__views = { get product() { return productView; }, get station() { return stationView; }, main: { scene, arms, ops, env }, resize };
 
 // ── 啟動 ─────────────────────────────────────
 buildSideCards();

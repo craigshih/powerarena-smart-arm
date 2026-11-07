@@ -40,7 +40,7 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
       Object.assign(o.material, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     }
   });
-  // 承盤 IoT 感測器：裝在承盤車頭那一面，跟著承盤上下；LED 綠＝回傳中、紫閃＝回報卡住
+  // 承盤感測器：裝在承盤車頭那一面，跟著承盤上下；LED 綠＝回傳中、紫閃＝回報卡住
   const traySensor = new THREE.Group();
   const sensorLed = new THREE.MeshStandardMaterial({ color: 0x1e232c, emissive: 0x3ccf6b, emissiveIntensity: 1.2, roughness: 0.3 });
   {
@@ -50,7 +50,7 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
     add(new THREE.CylinderGeometry(0.004, 0.004, 0.1, 6), dark, 0.055, 0.085, 0);
     add(new THREE.SphereGeometry(0.012, 12, 8), sensorLed, -0.04, 0.0, 0.022);
     add(new THREE.CylinderGeometry(0.014, 0.014, 0.01, 16), new THREE.MeshStandardMaterial({ color: 0x9fb4cc, roughness: 0.2, metalness: 0.6 }), 0.02, 0, 0.022).rotation.x = Math.PI / 2;
-    const info = { title: '⑩ 承盤 IoT 感測器', id: 'env-tray-iot', rows: [
+    const info = { title: '⑩ 承盤感測器', id: 'env-tray-iot', rows: [
       ['作用', '持續回傳承盤高度、下降進度與是否到位，和 PLC 訊號互相比對'], ['回傳', '約每 0.1 秒一次（假設）'], ['位置', '承盤車頭那一面（示意，待確認）']] };
     traySensor.traverse((o) => { if (o.isMesh) o.userData.info = info; });
     const tray = station.tray;
@@ -61,7 +61,7 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
     tray.add(traySensor);
     const el = document.createElement('div');
     el.className = 'tag tag-step tag-iot';
-    el.textContent = '⑩ 承盤 IoT';
+    el.textContent = '⑩ 承盤';
     const tag = new CSS2DObject(el);
     tag.center.set(0.5, 1);
     tag.position.set(0, 0.2, 0);

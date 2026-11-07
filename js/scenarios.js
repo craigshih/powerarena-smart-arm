@@ -43,7 +43,7 @@ class Track {
   }
   trigger() { this.push({ ev: { type: 'tool:trigger' } }); this.t += 0.4; return this; }
   // 手臂麥克風：回覆「收到」、口頭回報異常（不移動時間軸）
-  ack(text = '收到', dt = 0) { return this.push({ ev: { type: 'voice:ack' }, voice: { kind: 'ack', text } }, dt); }
+  ack(text = '收到', dt = 0) { return this.push({ ev: { type: 'voice:ack', text }, voice: { kind: 'ack', text } }, dt); }
   report(text, dt = 0) { return this.push({ ev: { type: 'voice:report', text }, voice: { kind: 'report', text } }, dt); }
   // 工具回報扭力。torque 省略時取該區域目標扭力 ±4%
   torque(zoneId, torque, angle) {
@@ -150,7 +150,7 @@ const TRAY_FAULT = {
       normalA(L).note('左下完成，工具已鎖定，等承盤');
       all(TRAY_DUE, { ev: { type: 'tray:lowering' } });
       all(TRAY_DUE + 2, { trayStop: true });
-      all(TRAY_DUE + 8.6, { note: '承盤 IoT 回報 8 秒沒降到底：判「系統異常：承盤異常」。作業員照常等待；現場主管收到通知到場' });
+      all(TRAY_DUE + 8.6, { note: '承盤感測器回報 8 秒沒降到底：判「系統異常：承盤異常」。作業員照常等待；現場主管收到通知到場' });
       L.at(TRAY_DUE + 10).report('承盤卡住了');
       all(TRAY_DUE + 14, { note: '現場主管確認承盤卡住，按下承盤復歸' });
       all(TRAY_DUE + 14, { ev: { type: 'tray:lowering' } });

@@ -70,12 +70,21 @@ export const ARM_PARTS = [
   },
   {
     key: 'plc', n: 6, title: '承盤 PLC 訊號（I/O）', tag: 'PLC 訊號', principles: [2, 3],
-    short: '直接讀承盤訊號', beforeShort: '和承盤沒有連線',
+    short: '告訴工具承盤降好了沒', beforeShort: '和承盤沒有連線',
     spec: ['plcSignals', 'trayFaultTimeout'],
     before: '工具和承盤沒有連線，各做各的。',
-    what: '控制器接承盤的「開始下降」「下降完成」數位訊號。承盤開始下降 8 秒內沒收到「下降完成」，判系統異常：承盤異常。',
+    what: '控制器接承盤 PLC 的「開始下降」「下降完成」數位訊號，決定步驟 3 開不開放。PLC 只管設備訊號；扭力判定、順序、超時與視覺比對由控制器與上層系統負責。',
     why: '直接用設備本身的訊號判斷時機，不靠作業員或攝影機推測。',
     fault: '訊號遺失 → 步驟 3 維持鎖定並通知現場主管，紀錄歸在系統異常：承盤異常。',
+    // 每種異常情境裡 PLC 扮演的角色（direct：直接判斷依據；indirect：提供輔助訊號；none：不經過 PLC）
+    roles: [
+      ['降前鎖附', 'direct', '承盤到位訊號＋工具位置', '確認承盤是否下降到位'],
+      ['錯誤步驟', 'indirect', 'SOP 順序＋工具所在孔位', '提供作業階段或允許訊號'],
+      ['超過鎖附時間', 'indirect', '作業時間＋工具狀態', '提供作業啟動或完成訊號'],
+      ['扭力不足', 'indirect', 'IoT 扭力、角度實測值', '接收鎖附 OK／NG 結果'],
+      ['系統異常 A／C：扭矩槍訊號中斷', 'arch', '手臂 L／R 通訊心跳', '可能監測通訊狀態（視架構）'],
+      ['系統異常 B：視覺與 IoT 不一致', 'none', '攝影機辨識＋IoT 作業紀錄', '通常由上層系統比對'],
+    ],
   },
   {
     key: 'key', n: 7, title: '現場主管鑰匙開關（降級模式）', tag: '鑰匙開關', principles: [3],
@@ -105,13 +114,13 @@ export const ARM_PARTS = [
     fault: '只辨識固定關鍵詞。麥克風故障時提示照常，系統接收區塊標示「麥克風中斷」，作業員改用原本的方式找現場主管。',
   },
   {
-    key: 'trayiot', n: 10, title: '承盤 IoT 感測器', tag: '承盤 IoT', principles: [2, 3],
+    key: 'trayiot', n: 10, title: '承盤感測器', tag: '承盤', principles: [2, 3],
     short: '承盤高度與到位即時回傳', beforeShort: '承盤到位只能用看的',
     spec: ['trayIotSensor', 'trayIotRate'],
     before: '承盤有沒有降到位只能用看的，卡住時要等人發現。',
     what: '承盤側面加裝測距感測器，持續回傳高度、下降進度與是否到位，並和 PLC 的「下降完成」訊號互相比對。',
     why: '工具開不開放看的是承盤真正的位置；承盤卡住時感測器先發現，現場主管直接收到通知。',
-    fault: '感測器斷線時改用 PLC 訊號判斷，系統接收區塊標示「承盤 IoT 中斷」。',
+    fault: '感測器斷線時改用 PLC 訊號判斷，系統接收區塊標示「承盤感測器中斷」。',
   },
 ];
 
@@ -196,6 +205,20 @@ export function drawArmScreen(c, state, side) {
     });
     y += 40;
   }
+  // 手臂麥克風：等作業員回覆時顯示「聆聽中」，聽到後顯示聽到的話（5 秒）
+  const heard = state.heard && state.t - state.heard.at < 5 ? state.heard : null;
+  const listening = !heard && a && a.level !== 'info' && a.type !== 'VOICE_REPORT';
+  if (state.phase !== 'IDLE') {
+    const my = h - 100; // 固定在警示列上方，位置不跳
+    const tone = heard ? '#3ccf6b' : listening ? '#3dd6d0' : '#5d6a80';
+    drawMic(c, 18, my, tone);
+    c.font = font(heard || listening ? 20 : 18, heard ? 700 : 500);
+    c.fillStyle = tone;
+    c.textBaseline = 'middle';
+    c.fillText(heard
+      ? (heard.kind === 'report' ? `已回報「${heard.text}」→ 已通知現場主管` : `聽到「${heard.text}」→ 已確認`)
+      : listening ? '聆聽中：請說「收到」' : '麥克風待命・可口頭回報異常', 40, my);
+  }
   // 警示與處置
   if (a && a.level !== 'info') {
     const by = h - 76;
@@ -213,6 +236,25 @@ export function drawArmScreen(c, state, side) {
     c.font = font(24, 500);
     c.fillText(`→ ${SCREEN_FIX[a.type] ?? '依提示處置'}`, 16, by + 58);
   }
+  c.restore();
+}
+
+// 麥克風小圖示（中心點 x, y）
+function drawMic(c, x, y, color) {
+  c.save();
+  c.strokeStyle = color;
+  c.fillStyle = color;
+  c.lineWidth = 2.4;
+  c.beginPath();
+  c.roundRect(x - 5, y - 13, 10, 16, 5);
+  c.fill();
+  c.beginPath();
+  c.arc(x, y - 3, 9, 0.15 * Math.PI, 0.85 * Math.PI);
+  c.stroke();
+  c.beginPath();
+  c.moveTo(x, y + 6);
+  c.lineTo(x, y + 11);
+  c.stroke();
   c.restore();
 }
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>改良版鎖附手臂</title>
-  <meta name="description" content="引擎組裝站 IoT 防錯提案的互動 mock-up：廠房情境、改良版鎖附手臂、現行與改良後對比、異常事件追溯。">
+  <meta name="description" content="引擎組裝站 IoT 防錯提案的互動 mock-up：廠房情境、改良版鎖附手臂、異常事件追溯。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0e14'/%3E%3Cpath d='M6 7h20M11 7v5l7 3v6' stroke='%23f2c230' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Crect x='15' y='21' width='6' height='6' rx='1.5' fill='%233ccf6b'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
@@ -32,13 +32,6 @@
             <button data-go="product" type="button">介紹</button>
             <button data-go="arm" type="button">情境演練</button>
             <button data-go="settings" type="button">鎖附參數設定</button>
-          </div>
-        </div>
-        <div class="ng" data-group="vs">
-          <button data-go="sim" type="button">現在 vs 改良後</button>
-          <div class="ng-sub">
-            <button data-go="sim" type="button">實境對比</button>
-            <button data-go="compare" type="button">對照表</button>
           </div>
         </div>
         <div class="ng" data-group="trace"><button data-go="trace" type="button">異常事件追溯</button></div>
@@ -76,7 +69,8 @@
           <label class="toggle"><input type="checkbox" data-st-layer="zones"><span></span>螺絲孔位</label>
           <label class="toggle"><input type="checkbox" data-st-layer="rail"><span></span>產線滑軌</label>
           <label class="toggle"><input type="checkbox" data-st-layer="dims"><span></span>尺寸標註</label>
-          <label class="toggle"><input type="checkbox" data-st-layer="labels"><span></span>文字標籤</label>
+          <label class="toggle"><input type="checkbox" data-st-layer="steps"><span></span>螺絲步驟標籤</label>
+          <label class="toggle"><input type="checkbox" data-st-layer="labels"><span></span>設備標籤</label>
           <label class="toggle"><input type="checkbox" data-st-layer="bbox"><span></span>子畫面標註框</label>
         </section>
         <section class="card">
@@ -158,7 +152,7 @@
                   <span class="screw s1"></span><span class="screw s2"></span><span class="screw s3"></span><span class="screw s4"></span>
                   <div class="device-glass">
                     <canvas id="pd-device-canvas" width="960" height="640" aria-label="手臂螢幕畫面"></canvas>
-                    <span class="note n1">1</span><span class="note n2">2</span><span class="note n3">3</span><span class="note n4">4</span><span class="note n5">5</span>
+                    <span class="note n1">1</span><span class="note n2">2</span><span class="note n3">3</span><span class="note n4">4</span><span class="note n5">5</span><span class="note n6">6</span>
                   </div>
                   <div class="device-foot"><span class="led"></span><span>10.1" 工業級・IP65</span><span>左側手臂</span></div>
                 </div>
@@ -169,11 +163,11 @@
                   <button id="pd-device-full" class="btn" type="button">全螢幕</button>
                 </div>
                 <ol class="legend-list">
-                  <li><b>1</b>步驟</li><li><b>2</b>工具狀態</li><li><b>3</b>倒數</li><li><b>4</b>每顆螺絲</li><li><b>5</b>錯誤與修正</li>
+                  <li><b>1</b>步驟</li><li><b>2</b>工具狀態</li><li><b>3</b>倒數</li><li><b>4</b>每顆螺絲</li><li><b>5</b>錯誤與修正</li><li><b>6</b>麥克風：聆聽中／聽到的話</li>
                 </ol>
               </figcaption>
             </figure>
-            <div id="pd-uses" class="pd-uses"></div>
+            <div class="pd-side"><div id="pd-uses" class="pd-uses"></div><div id="pd-spec" class="pd-spec"></div></div>
           </div>
         </section>
       </div>
@@ -196,8 +190,6 @@
             <button data-preset="top" type="button">由上往下</button>
             <button data-preset="armL" type="button">左手臂</button>
             <button data-preset="armR" type="button">右手臂</button>
-            <button data-preset="toolL" type="button">左工具</button>
-            <button data-preset="toolR" type="button">右工具</button>
           </div>
         </section>
       </aside>
@@ -208,6 +200,9 @@
             <label class="scen-pick"><span>情境</span><select id="scenario-select" aria-label="情境"></select></label>
             <span id="hud-expect"></span>
           </div>
+          <button id="side-toggle" class="side-toggle" type="button" aria-controls="side-right" aria-expanded="true" title="收起右側面板">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span>收起</span>
+          </button>
         </div>
         <div class="timeline">
           <button id="t-play" class="play paused" type="button" aria-label="播放"></button>
@@ -233,7 +228,7 @@
         </div>
       </section>
 
-      <aside class="side side-right">
+      <aside class="side side-right" id="side-right">
         <div class="tabs" role="tablist">
           <button data-tab="live" role="tab" type="button">即時狀態</button>
           <button data-tab="sys" role="tab" type="button">系統接收</button>
@@ -272,105 +267,6 @@
           </div>
         </div>
         <div id="set-grid" class="set-grid"></div>
-      </div>
-    </section>
-
-    <!-- ── 現在 vs 改良後・實境對比 ───────────────── -->
-    <section class="view doc" data-view="sim" aria-label="實境對比" hidden>
-      <div class="page wide">
-        <div class="sim-ctl">
-          <div class="sim-ctl-row">
-            <label class="select"><span class="muted small">情境</span><select id="sim-scenario"></select></label>
-            <button id="sim-play" class="btn primary" type="button">播放</button>
-            <span class="spacer"></span>
-            <div class="seg" role="group" aria-label="觀看哪一側">
-              <button data-sim-side="L" type="button" class="on">左側</button>
-              <button data-sim-side="R" type="button">右側</button>
-            </div>
-            <div class="seg" role="group" aria-label="播放速度">
-              <button data-sim-speed="1" type="button">1×</button>
-              <button data-sim-speed="2" type="button" class="on">2×</button>
-              <button data-sim-speed="4" type="button">4×</button>
-            </div>
-          </div>
-          <div class="sim-ctl-row">
-            <span class="muted small ctl-label">跳到</span>
-            <div id="sim-chapters" class="chapters" role="group" aria-label="跳到"></div>
-          </div>
-          <div class="sim-seek-track">
-            <div id="sim-track" class="t-track">
-              <div id="sim-fill" class="t-fill"></div>
-              <div id="sim-marks" class="t-marks"></div>
-              <input id="sim-slider" type="range" min="0" step="0.1" value="0" aria-label="播到哪裡">
-            </div>
-            <span id="sim-time" class="muted small num">0:00</span>
-          </div>
-        </div>
-        <div class="sim-grid">
-          <figure class="sim-pane legacy">
-            <figcaption><b>現行手臂</b></figcaption>
-            <div id="sim-view-old" class="sim-view"></div>
-            <div id="sim-status-old" class="sim-status"></div>
-          </figure>
-          <figure class="sim-pane iot">
-            <figcaption><b>IoT 改良手臂</b></figcaption>
-            <div id="sim-view-iot" class="sim-view"></div>
-            <div id="sim-status-iot" class="sim-status"></div>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── 現在 vs 改良後・對照表 ───────────────── -->
-    <section class="view doc" data-view="compare" aria-label="對照表" hidden>
-      <div class="page prose-page">
-        <h3 class="sec first">三大痛點</h3>
-        <div class="vs-cards">
-          <article class="vs-card">
-            <h4>承盤下降前鎖附</h4>
-            <p class="now"><i>現在</i>工具隨時能轉</p>
-            <p class="new"><i>改良後</i>承盤沒降，工具不轉</p>
-            <button class="link" data-play="early" type="button">看情境</button>
-          </article>
-          <article class="vs-card">
-            <h4>超過鎖附時間</h4>
-            <p class="now"><i>現在</i>事後才知道</p>
-            <p class="new"><i>改良後</i>剩 15 秒預警，超時記錄</p>
-            <button class="link" data-play="timeout" type="button">看情境</button>
-          </article>
-          <article class="vs-card">
-            <h4>SOP 順序</h4>
-            <p class="now"><i>現在</i>靠記憶</p>
-            <p class="new"><i>改良後</i>孔位不對，工具鎖住</p>
-            <button class="link" data-play="sequence" type="button">看情境</button>
-          </article>
-          <article class="vs-card">
-            <h4>有沒有鎖緊</h4>
-            <p class="now"><i>現在</i>沒有紀錄</p>
-            <p class="new"><i>改良後</i>每顆扭力、角度留存</p>
-            <button class="link" data-play="ng" type="button">看情境</button>
-          </article>
-        </div>
-
-        <h3 class="sec">業主三項原則</h3>
-        <div class="principles">
-          <article class="card principle"><span class="pchip p1">原則一</span><h4>不增加動作</h4><p>沒有新按鈕；提示在握把與語音</p></article>
-          <article class="card principle"><span class="pchip p2">原則二</span><h4>從工具思考</h4><p>工具自己判斷能不能轉、量扭力</p></article>
-          <article class="card principle"><span class="pchip p3">原則三</span><h4>妥善率</h4><p>斷線即鎖住；現場主管鑰匙降級；全程記錄</p></article>
-        </div>
-
-        <h3 class="sec">故障時</h3>
-        <div class="table-wrap">
-          <table class="compare">
-            <thead><tr><th>故障</th><th>工具反應</th><th>誰處理</th><th>分類</th></tr></thead>
-            <tbody>
-              <tr><th>承盤異常</th><td>上方不開放</td><td>現場主管復歸承盤</td><td><span class="cat cat-AUTOMATION">系統異常</span></td></tr>
-              <tr><th>扭矩槍訊號中斷</th><td>立即停轉鎖住</td><td>現場主管、工具商</td><td><span class="cat cat-TOOL">系統異常 A</span></td></tr>
-              <tr><th>感測器異常</th><td>鎖住</td><td>工具商</td><td><span class="cat cat-TOOL">系統異常 A</span></td></tr>
-              <tr><th>控制器故障</th><td>鑰匙切降級，回現行作業</td><td>維護＋現場主管</td><td><span class="cat cat-TOOL">系統異常 A</span></td></tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     </section>
 

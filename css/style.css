@@ -459,7 +459,7 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .note.n2 { left: 21%; top: 23%; }
 .note.n3 { right: 1.5%; top: 2%; }
 .note.n4 { left: 50%; top: 39%; }
-.note.n5 { left: 1.5%; top: 72%; }
+.note.n5 { left: 1.5%; top: 80%; }
 .device-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 4px 0; font-size: 11px; letter-spacing: .04em; color: #8b93a0; }
 .device-foot .led { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
 .device:fullscreen { display: grid; place-items: center; padding: 3vh 5vw; background: #0a0d12; }
@@ -843,3 +843,43 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
   .compare th { width: auto; font-size: 14px; padding-top: 8px; }
   .compare td { max-width: none; }
 }
+
+/* ── 情境演練：右側面板收起／展開 ─────────── */
+.side-toggle {
+  position: absolute; right: 12px; top: 12px; z-index: 4; zoom: var(--z);
+  display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 12px 0 8px;
+  border-radius: 99px; border: 1px solid var(--line); background: rgba(10, 14, 20, .82); color: var(--text); font-size: 12.5px;
+}
+.side-toggle:hover { border-color: var(--accent); }
+.side-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+.side-closed .side-toggle svg { transform: rotate(180deg); }
+@media (min-width: 1100px) {
+  .view[data-view="arm"] .hud { max-width: min(460px, calc(100% - 130px)); }
+  .app.side-closed { grid-template-columns: calc(var(--left-w) * var(--z)) minmax(0, 1fr) 0; }
+  .app.side-closed .side-right { display: none; }
+}
+@media (max-width: 1099px) { .side-toggle { display: none; } }
+
+/* ── 手臂介紹：PLC 角色、手臂螢幕規格 ─────────── */
+.note.n6 { left: 1.5%; top: 63%; }
+.plc-roles ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.plc-roles li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: baseline; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
+.plc-roles b { font-size: 13px; }
+.plc-roles small { grid-column: 2; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.plc-lv { grid-row: span 2; align-self: start; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; border: 1px solid; white-space: nowrap; }
+.plc-lv.d-direct { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.plc-lv.d-indirect { color: #8ec5ff; border-color: #2f4d73; }
+.plc-lv.d-arch { color: #c9b3ff; border-color: #4b3d73; }
+.plc-lv.d-none { color: var(--faint); border-color: var(--line); }
+.pd-side { display: grid; gap: 14px; align-content: start; }
+.pd-spec { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 12px 14px; }
+.pd-spec h4 { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.spec-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 13px; }
+.spec-list dt { color: var(--muted); white-space: nowrap; }
+.spec-list dd { margin: 0; color: var(--text); max-width: 36em; }
+.spec-list small { display: block; font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+@media (max-width: 767px) {
+  .spec-list { grid-template-columns: 1fr; gap: 2px; }
+  .spec-list dd { margin-bottom: 8px; }
+}
+.demo-cmp:has(#demo-old[hidden]) { grid-template-columns: 1fr; }

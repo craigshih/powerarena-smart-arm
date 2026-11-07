@@ -234,10 +234,13 @@ export function createStationView(deps) {
   }));
 
   // ── 圖層 ───────────────────────────────────
-  const narrow = matchMedia('(max-width: 767px)').matches;
-  const layerState = { frustums: true, zones: true, dims: false, rail: true, labels: !narrow, bbox: true };
+  // 文字標籤預設全關：呈報時先看工站流程，講解時再一一打開
+  const layerState = { frustums: true, zones: true, dims: false, rail: true, steps: false, labels: false, bbox: true };
   const applyLayer = (k) => {
-    if (k === 'labels') env.setTags(layerState.labels, true);
+    if (k === 'labels' || k === 'steps') {
+      env.setTags(layerState.labels, layerState.steps);
+      for (const s of ['L', 'R']) arms[s].tags.forEach((t) => (t.visible = layerState.labels)); // 手臂上方的狀態標籤也算設備標籤
+    }
     else if (k !== 'bbox') env.setLayer(k, layerState[k]);
   };
   Object.keys(layerState).forEach(applyLayer);

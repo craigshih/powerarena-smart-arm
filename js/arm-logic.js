@@ -126,6 +126,7 @@ export function createArmLogic(options = {}) {
       timedOut: false,
       alarms: [],
       last: null,
+      heard: null, // 手臂麥克風最近聽到的話（手臂螢幕顯示用）
     };
   }
   reset();
@@ -377,12 +378,14 @@ export function createArmLogic(options = {}) {
 
     // 手臂麥克風（只辨識固定關鍵詞）：回覆「收到」代表提示有被聽到；口頭回報則記一筆並通知現場主管，
     // 喇叭回播「已收到回報」讓作業員知道系統收到了
-    'voice:ack'() {
+    'voice:ack'(e) {
       if (s.phase === 'IDLE') return;
+      s.heard = { kind: 'ack', text: e?.text ?? '收到', at: s.t };
       rec('VOICE_ACK');
     },
     'voice:report'(e) {
       if (s.phase === 'IDLE') return;
+      s.heard = { kind: 'report', text: e.text ?? '', at: s.t };
       rec('VOICE_REPORT');
       alarm('VOICE_REPORT', 'info', `已收到回報：${e.text ?? ''}`, '已收到回報，已通知現場主管', 3);
     },
