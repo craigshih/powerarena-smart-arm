@@ -3,6 +3,7 @@
 // - 點 3D 部件、編號標籤或右側清單：鏡頭飛過去放大那個部件，右側顯示舊款 vs 新款、規格與故障對策
 // - 狀態示範：新舊手臂切到同一時刻；手臂螢幕區塊的實機畫面同步更新
 
+import { groupSelect } from './group-select.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
@@ -416,6 +417,7 @@ export function createProductView(deps) {
     ['錯誤', ['early', 'sequence', 'ng', 'fault', 'vision', 'faultC']]];
   $('#demo-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
     .map((k) => `<option value="${k}">${DEMOS.find((d) => d.key === k).label}</option>`).join('')}</optgroup>`).join('');
+  groupSelect($('#demo-select'));
   $('#demo-select').addEventListener('change', (e) => {
     unlockAudio();
     st.demo = e.target.value;

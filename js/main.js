@@ -6,6 +6,7 @@ import { P, SRC, ZONES, SEQUENCE_STATUS, SPEC, PARAM_GROUPS, zoneById, boltPosit
 import { EVENT_TYPES, CATEGORY, RESULT_LABEL, PHASE_STEP, signalsFor } from './arm-logic.js';
 import { createSmartArm, drawArmScreen, PRINCIPLES } from './arm-model.js';
 import { SCENARIOS, scenarioById, createRun, generateHistory } from './scenarios.js';
+import { groupSelect } from './group-select.js';
 import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
 import { createAlertFx } from './alert-fx.js';
@@ -357,6 +358,7 @@ $('#scenario-select').innerHTML = SCENARIO_GROUPS.map(([g, ids]) => `<optgroup l
 function renderScenarioList() {
   $('#scenario-select').value = ui.scenarioId;
 }
+groupSelect($('#scenario-select'));
 $('#scenario-select').addEventListener('change', (e) => load(e.target.value, { autoplay: true }));
 $('#t-play').addEventListener('click', () => (ui.playing ? pause() : play()));
 $('#t-restart').addEventListener('click', () => load(ui.scenarioId, { autoplay: true }));
