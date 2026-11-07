@@ -50,10 +50,17 @@ export const DEMOS = [
   { key: 'done', label: '本車完成', id: 'normal', t: 36, old: '沒有完成確認', look: ['#3ccf6b', 'check', '本車完成'],
     use: { title: '鎖完確認', act: '每顆都是綠點' } },
 ];
-// 狀態選單：分組、項目與文字一字不差照報告附圖；情境演練的選單用同一份
-// 選單文字用 menu（沒有就用 label）
-export const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait']],
-  ['錯誤', ['early', 'ng', 'tray', 'fault']]];
+// 狀態選單：項目與文字一字不差照最新版情境設計（和情境演練的選單相同）
+const DEMO_MENU = [
+  ['ready', '正常情境'],
+  ['early', '順序異常｜降前鎖附'],
+  ['timeout', '時間異常｜超過鎖附時間'],
+  ['ng', '品質異常｜扭力或角度超規 、扭力不足'],
+  ['fault', '連線異常｜機器手臂L /R失聯'],
+  ['vision', '資料異常｜視覺與 IoT 不一致'],
+];
+// 手臂螢幕作用清單裡的其他時刻，選單停在所屬情境
+const MENU_OF = { running: 'ready', wait: 'ready', done: 'ready', warn: 'timeout', sequence: 'early', faultC: 'fault', tray: 'ready' };
 const ICON = {
   check: '<path d="M4 12l5 5L20 6"/>',
   spin: '<path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>',
@@ -300,7 +307,7 @@ export function createProductView(deps) {
       plant.fx.reset();
       plant.fx.onRecords(current.records, { pops: false });
     }
-    $('#demo-select').value = d.key;
+    $('#demo-select').value = MENU_OF[d.key] ?? d.key;
     const a = state.alarm && state.alarm.level !== 'info' ? state.alarm : null;
     const [color, ic, text, blink] = d.look;
     const label = d.key === 'warn' && state.remaining != null ? `剩 ${Math.ceil(state.remaining)} 秒` : text;
@@ -412,8 +419,7 @@ export function createProductView(deps) {
   $('#product-spin').addEventListener('change', (e) => (controls.autoRotate = e.target.checked));
   $('#product-new').addEventListener('change', renderFeature);
   $('#product-back').addEventListener('click', () => overview());
-  $('#demo-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
-    .map((k) => { const d = DEMOS.find((x) => x.key === k); return `<option value="${k}">${d.menu ?? d.label}</option>`; }).join('')}</optgroup>`).join('');
+  $('#demo-select').innerHTML = DEMO_MENU.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
   groupSelect($('#demo-select'));
   $('#demo-select').addEventListener('change', (e) => {
     unlockAudio();
