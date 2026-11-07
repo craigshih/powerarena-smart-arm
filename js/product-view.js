@@ -412,8 +412,8 @@ export function createProductView(deps) {
   $('#product-spin').addEventListener('change', (e) => (controls.autoRotate = e.target.checked));
   $('#product-new').addEventListener('change', renderFeature);
   $('#product-back').addEventListener('click', () => overview());
-  const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait']],
-    ['錯誤', ['early', 'timeout', 'sequence', 'ng', 'fault', 'vision', 'faultC']]];
+  const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait', 'timeout']],
+    ['錯誤', ['early', 'sequence', 'ng', 'fault', 'vision', 'faultC']]];
   $('#demo-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
     .map((k) => `<option value="${k}">${DEMOS.find((d) => d.key === k).label}</option>`).join('')}</optgroup>`).join('');
   $('#demo-select').addEventListener('change', (e) => {

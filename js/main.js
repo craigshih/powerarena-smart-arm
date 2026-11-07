@@ -349,8 +349,9 @@ function tick(dt) {
 
 // ── 左側：情境清單、播放控制 ─────────────────────
 // 情境用下拉選單，內容與順序同主管端模組
-// 情境選單分組，和手臂介紹的狀態選單同一種樣子
-const SCENARIO_GROUPS = [['正常', ['normal']], ['錯誤', ['early', 'timeout', 'sequence', 'ng', 'tool', 'vision', 'toolC']]];
+// 情境選單照「正常／提醒／錯誤」分組，和手臂介紹的狀態選單一樣；超過鎖附時間只預警、記錄，不鎖工具，歸提醒
+const SCENARIO_GROUPS = [['正常', ['normal']], ['提醒', ['timeout']],
+  ['錯誤', ['early', 'sequence', 'ng', 'tool', 'vision', 'toolC']]];
 $('#scenario-select').innerHTML = SCENARIO_GROUPS.map(([g, ids]) => `<optgroup label="${g}">${ids
   .map((id) => `<option value="${id}">${scenarioById(id).title}</option>`).join('')}</optgroup>`).join('');
 function renderScenarioList() {
