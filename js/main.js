@@ -10,7 +10,7 @@ import { groupSelect } from './group-select.js';
 import { buildEnvironment } from './environment.js';
 import { createOperator } from './operator.js';
 import { createAlertFx } from './alert-fx.js';
-import { createProductView, DEMOS, DEMO_GROUPS } from './product-view.js';
+import { createProductView } from './product-view.js';
 import { createStationView } from './station-view.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -206,8 +206,8 @@ let currentSpec = specFrom(store.get('spec', null));
 
 // ── 播放器 ───────────────────────────────────
 const ui = {
-  // 只回到選單裡有的情境（正常流程、降前鎖附、扭力不足、承盤異常、扭矩槍訊號中斷）
-  scenarioId: ['normal', 'early', 'ng', 'automation', 'tool'].includes(store.get('scenario')) ? store.get('scenario') : 'normal',
+  // 只回到選單裡有的情境
+  scenarioId: ['normal', 'early', 'timeout', 'ng', 'tool', 'vision'].includes(store.get('scenario')) ? store.get('scenario') : 'normal',
   speed: 2,
   encoder: true,
   playing: false,
@@ -351,28 +351,21 @@ function tick(dt) {
 
 // ── 左側：情境清單、播放控制 ─────────────────────
 // 情境用下拉選單，內容與順序同主管端模組
-// 情境選單和手臂介紹的狀態選單同一份（照報告附圖：正常／提醒／錯誤）
-// 正常、提醒的項目是某段情境裡的一個時刻：載入該情境、跳到那一刻接著播；錯誤項目從頭播整段情境
-const PICK = Object.fromEntries(DEMOS.map((d) => [d.key, d]));
-const MOMENT = { ready: 1, running: 1, done: 1, warn: 1, wait: 1 };
-const PICK_OF_SCENARIO = Object.fromEntries(DEMOS.filter((d) => !MOMENT[d.key]).map((d) => [d.id, d.key]));
-PICK_OF_SCENARIO.normal = 'ready';
-$('#scenario-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
-  .map((k) => `<option value="${k}">${PICK[k].menu ?? PICK[k].label}</option>`).join('')}</optgroup>`).join('');
-const MENU_KEYS = new Set(DEMO_GROUPS.flatMap(([, keys]) => keys));
+// 情境選單：項目與文字一字不差照最新版情境設計
+const SCENARIO_MENU = [
+  ['normal', '正常情境'],
+  ['early', '順序異常｜降前鎖附'],
+  ['timeout', '時間異常｜超過鎖附時間'],
+  ['ng', '品質異常｜扭力或角度超規 、扭力不足'],
+  ['tool', '連線異常｜機器手臂L /R失聯'],
+  ['vision', '資料異常｜視覺與 IoT 不一致'],
+];
+$('#scenario-select').innerHTML = SCENARIO_MENU.map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
 function renderScenarioList() {
-  const cur = PICK[ui.pick];
-  const k = cur && cur.id === ui.scenarioId ? ui.pick : PICK_OF_SCENARIO[ui.scenarioId];
-  $('#scenario-select').value = MENU_KEYS.has(k) ? k : 'ready';
-}
-function pickScenario(key) {
-  const d = PICK[key];
-  ui.pick = key;
-  load(d.id, { autoplay: !MOMENT[key] });
-  if (MOMENT[key]) { seek(d.t); if (!ui.run.done) play(); }
+  $('#scenario-select').value = ui.scenarioId;
 }
 groupSelect($('#scenario-select'));
-$('#scenario-select').addEventListener('change', (e) => pickScenario(e.target.value));
+$('#scenario-select').addEventListener('change', (e) => load(e.target.value, { autoplay: true }));
 $('#t-play').addEventListener('click', () => (ui.playing ? pause() : play()));
 $('#t-restart').addEventListener('click', () => load(ui.scenarioId, { autoplay: true }));
 $$('[data-speed]').forEach((b) => b.addEventListener('click', () => {
@@ -688,7 +681,6 @@ function boltRows(records) {
   }
   const list = [...rows.values()].filter((r) => r.result);
   for (const row of list) {
-    if (row.phase === 'C' && autoByVin.has(row.vin)) { row.cats.add('AUTOMATION'); row.notes.push('承盤異常，等待復歸後鎖附'); }
     if (row.attempts > 1) row.notes.push(`重鎖 ${row.attempts - 1} 次`);
   }
   return list;

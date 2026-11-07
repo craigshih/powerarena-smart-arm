@@ -18,11 +18,13 @@
 import { P, SEQUENCE, SPEC, zoneById } from './arm-params.js';
 
 // 代號：A 機器手臂 L 失聯、B 視覺與 IoT 不一致、C 機器手臂 R 失聯；承盤異常沒有代號
+// 錯誤分類照最新版情境設計
 export const CATEGORY = {
-  TOOL: '系統異常 A／C：機器手臂失聯',
-  VISION: '系統異常 B：視覺與 IoT 不一致',
-  AUTOMATION: '系統異常：承盤異常',
-  OPERATION: '作業異常',
+  ORDER: '順序異常｜降前鎖附',
+  TIME: '時間異常｜超過鎖附時間',
+  QUALITY: '品質異常｜扭力或角度超規 、扭力不足',
+  LINK: '連線異常｜機器手臂L /R失聯',
+  DATA: '資料異常｜視覺與 IoT 不一致',
 };
 
 // type → 中文、預設結果、錯誤分類
@@ -31,18 +33,18 @@ export const EVENT_TYPES = {
   TOOL_ENABLED: { label: '工具致能', result: 'INFO', category: '' },
   TOOL_LOCKED: { label: '工具鎖定', result: 'INFO', category: '' },
   TIGHTEN_OK: { label: '鎖附 OK', result: 'OK', category: '' },
-  TIGHTEN_NG: { label: '鎖附 NG', result: 'NG', category: 'OPERATION' },
-  EARLY_ATTEMPT: { label: '降前鎖附（已攔下）', result: 'BLOCKED', category: 'OPERATION' },
-  SEQUENCE_ERROR: { label: '錯誤步驟（已攔下）', result: 'BLOCKED', category: 'OPERATION' },
+  TIGHTEN_NG: { label: '鎖附 NG', result: 'NG', category: 'QUALITY' },
+  EARLY_ATTEMPT: { label: '降前鎖附（已攔下）', result: 'BLOCKED', category: 'ORDER' },
+  SEQUENCE_ERROR: { label: '錯誤步驟（已攔下）', result: 'BLOCKED', category: 'ORDER' },
   PHASE_WARNING: { label: '即將超時', result: 'WARN', category: '' },
-  TIMEOUT: { label: '超過鎖附時間', result: 'NG', category: 'OPERATION' },
+  TIMEOUT: { label: '超過鎖附時間', result: 'NG', category: 'TIME' },
   PHASE_COMPLETE: { label: '階段完成', result: 'INFO', category: '' },
   TRAY_LOWERING: { label: '承盤開始下降', result: 'INFO', category: '' },
   TRAY_LOWERED: { label: '承盤下降完成', result: 'INFO', category: '' },
-  AUTOMATION_FAULT: { label: '承盤異常', result: 'FAULT', category: 'AUTOMATION' },
-  TOOL_FAULT: { label: '機器手臂失聯', result: 'FAULT', category: 'TOOL' },
+  AUTOMATION_FAULT: { label: '承盤異常', result: 'FAULT', category: '' },
+  TOOL_FAULT: { label: '機器手臂失聯', result: 'FAULT', category: 'LINK' },
   TOOL_RECOVERED: { label: '機器手臂恢復連線', result: 'INFO', category: '' },
-  VISION_MISMATCH: { label: '視覺與 IoT 不一致', result: 'FAULT', category: 'VISION' },
+  VISION_MISMATCH: { label: '視覺與 IoT 不一致', result: 'FAULT', category: 'DATA' },
   VOICE_ACK: { label: '作業員回覆收到', result: 'INFO', category: '' },
   VOICE_REPORT: { label: '作業員口頭回報', result: 'WARN', category: '' },
   BYPASS_ON: { label: '降級模式開啟', result: 'WARN', category: '' },

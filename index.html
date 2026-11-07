@@ -6,24 +6,24 @@
   <title>改良版鎖附手臂</title>
   <meta name="description" content="引擎組裝站 IoT 防錯提案的互動 mock-up：廠房情境、改良版鎖附手臂、異常事件追溯。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0e14'/%3E%3Cpath d='M6 7h20M11 7v5l7 3v6' stroke='%23f2c230' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Crect x='15' y='21' width='6' height='6' rx='1.5' fill='%233ccf6b'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/style.css?v=20261107212013">
+  <link rel="stylesheet" href="css/style.css?v=20261108001939">
   <script type="importmap">
     { "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-      "./js/alert-fx.js": "./js/alert-fx.js?v=20261107212013",
-      "./js/arm-logic.js": "./js/arm-logic.js?v=20261107212013",
-      "./js/arm-model.js": "./js/arm-model.js?v=20261107212013",
-      "./js/arm-params.js": "./js/arm-params.js?v=20261107212013",
-      "./js/environment.js": "./js/environment.js?v=20261107212013",
-      "./js/group-select.js": "./js/group-select.js?v=20261107212013",
-      "./js/main.js": "./js/main.js?v=20261107212013",
-      "./js/operator.js": "./js/operator.js?v=20261107212013",
-      "./js/product-view.js": "./js/product-view.js?v=20261107212013",
-      "./js/scenarios.js": "./js/scenarios.js?v=20261107212013",
-      "./js/station-view.js": "./js/station-view.js?v=20261107212013",
-      "./js/twin/params.js": "./js/twin/params.js?v=20261107212013",
-      "./js/twin/scene.js": "./js/twin/scene.js?v=20261107212013"
+      "./js/alert-fx.js": "./js/alert-fx.js?v=20261108001939",
+      "./js/arm-logic.js": "./js/arm-logic.js?v=20261108001939",
+      "./js/arm-model.js": "./js/arm-model.js?v=20261108001939",
+      "./js/arm-params.js": "./js/arm-params.js?v=20261108001939",
+      "./js/environment.js": "./js/environment.js?v=20261108001939",
+      "./js/group-select.js": "./js/group-select.js?v=20261108001939",
+      "./js/main.js": "./js/main.js?v=20261108001939",
+      "./js/operator.js": "./js/operator.js?v=20261108001939",
+      "./js/product-view.js": "./js/product-view.js?v=20261108001939",
+      "./js/scenarios.js": "./js/scenarios.js?v=20261108001939",
+      "./js/station-view.js": "./js/station-view.js?v=20261108001939",
+      "./js/twin/params.js": "./js/twin/params.js?v=20261108001939",
+      "./js/twin/scene.js": "./js/twin/scene.js?v=20261108001939"
     } }
   </script>
 </head>
@@ -303,10 +303,11 @@
           <select id="f-cat" aria-label="錯誤分類">
             <option value="">全部分類</option>
             <option value="ANY">只看有錯誤</option>
-            <option value="TOOL">系統異常 A／C：機器手臂失聯</option>
-            <option value="VISION">系統異常 B：視覺與 IoT 不一致</option>
-            <option value="AUTOMATION">系統異常：承盤異常</option>
-            <option value="OPERATION">作業異常</option>
+            <option value="ORDER">順序異常｜降前鎖附</option>
+            <option value="TIME">時間異常｜超過鎖附時間</option>
+            <option value="QUALITY">品質異常｜扭力或角度超規 、扭力不足</option>
+            <option value="LINK">連線異常｜機器手臂L /R失聯</option>
+            <option value="DATA">資料異常｜視覺與 IoT 不一致</option>
           </select>
           <div class="filter-actions">
             <button id="f-clear" class="btn" type="button">清除</button>
@@ -324,6 +325,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20261107212013"></script>
+  <script type="module" src="js/main.js?v=20261108001939"></script>
 </body>
 </html>

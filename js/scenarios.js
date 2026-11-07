@@ -354,8 +354,8 @@ export function runHeadless(scenario, opts) {
 // 示範用的追溯資料：用同一套腳本與狀態機跑出昨天到今天的車
 export function generateHistory({ count = 36, start = Date.parse('2026-10-21T08:00:00+08:00'), spec = SPEC } = {}) {
   const r = rng(2026);
-  const plan = ['normal', 'normal', 'normal', 'ng', 'normal', 'early', 'normal', 'normal', 'timeout', 'vision', 'sequence', 'normal',
-    'normal', 'early', 'normal', 'tool', 'normal', 'normal', 'ng', 'normal', 'normal', 'automation', 'normal', 'early'];
+  const plan = ['normal', 'normal', 'normal', 'ng', 'normal', 'early', 'normal', 'normal', 'timeout', 'vision', 'toolC', 'normal',
+    'normal', 'early', 'normal', 'tool', 'normal', 'normal', 'ng', 'normal', 'normal', 'timeout', 'normal', 'early'];
   const shifts = [{ L: 'OP-001', R: 'OP-002' }, { L: 'OP-003', R: 'OP-004' }];
   const records = [];
   for (let n = 0; n < count; n++) {

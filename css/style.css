@@ -341,16 +341,17 @@ select, input[type="search"] {
 }
 
 /* 追溯 */
-.summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.summary { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .stat { text-align: left; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel-2); display: grid; gap: 2px; }
 button.stat:hover { border-color: #3a5175; }
 .stat.on { border-color: var(--accent); }
 .stat span { font-size: 12px; color: var(--muted); }
 .stat b { font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.stat.c-AUTOMATION b { color: #c79bff; }
-.stat.c-TOOL b { color: var(--orange); }
-.stat.c-VISION b { color: #6fd6ff; }
-.stat.c-OPERATION b { color: #ff6b73; }
+.stat.c-DATA b { color: #c79bff; }
+.stat.c-LINK b { color: var(--orange); }
+.stat.c-TIME b { color: #6fd6ff; }
+.stat.c-QUALITY b { color: #ff6b73; }
+.stat.c-ORDER b { color: #ff9a5c; }
 .stat.c-ok b { color: var(--green); }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
 .filters input[type="search"] { width: 200px; }
@@ -374,10 +375,11 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .res-WARN { color: var(--yellow); }
 .res-INFO { color: var(--muted); font-weight: 500; }
 .cat { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 99px; border: 1px solid; white-space: nowrap; margin: 1px 2px 1px 0; }
-.cat-AUTOMATION { color: #c79bff; border-color: #5b3f8a; }
-.cat-TOOL { color: var(--orange); border-color: color-mix(in srgb, var(--orange) 45%, transparent); }
-.cat-VISION { color: #6fd6ff; border-color: #1f6f8f; }
-.cat-OPERATION { color: #ff8088; border-color: color-mix(in srgb, var(--red) 50%, transparent); }
+.cat-DATA { color: #c79bff; border-color: #5b3f8a; }
+.cat-LINK { color: var(--orange); border-color: color-mix(in srgb, var(--orange) 45%, transparent); }
+.cat-TIME { color: #6fd6ff; border-color: #1f6f8f; }
+.cat-ORDER { color: #ffa36e; border-color: #8a4a26; }
+.cat-QUALITY { color: #ff8088; border-color: color-mix(in srgb, var(--red) 50%, transparent); }
 .more { margin: 12px auto 0; display: flex; }
 .compare th { width: 18%; font-weight: 600; }
 .compare th small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
@@ -744,6 +746,7 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
   .side-right { grid-row: 2; grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
   .side-right .pane { max-width: 760px; }
   .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .summary > :first-child { grid-column: 1 / -1; } /* 7 格：合格率佔一整列，其餘 3＋3 */
   .principles { grid-template-columns: 1fr; }
   .sim-view { aspect-ratio: 1 / 1; }
   .product-grid { grid-template-columns: 1fr; }
@@ -862,15 +865,8 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 
 /* ── 手臂介紹：PLC 角色、手臂螢幕規格 ─────────── */
 .note.n6 { left: 1.5%; top: 63%; }
-.plc-roles ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
-.plc-roles li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: baseline; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
-.plc-roles b { font-size: 13px; }
-.plc-roles small { grid-column: 2; font-size: 12px; color: var(--muted); line-height: 1.5; }
-.plc-lv { grid-row: span 2; align-self: start; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; border: 1px solid; white-space: nowrap; }
-.plc-lv.d-direct { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.plc-lv.d-indirect { color: #8ec5ff; border-color: #2f4d73; }
-.plc-lv.d-arch { color: #c9b3ff; border-color: #4b3d73; }
-.plc-lv.d-none { color: var(--faint); border-color: var(--line); }
+.feature-about { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; line-height: 1.6; color: var(--muted); max-width: 46em; }
+.feature-about b { display: block; margin-bottom: 2px; color: var(--text); font-size: 13px; }
 .pd-side { display: grid; gap: 14px; align-content: start; }
 .pd-spec { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 12px 14px; }
 .pd-spec h4 { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
@@ -888,6 +884,7 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .gsel-pop { position: fixed; z-index: 1000; overflow-y: auto; padding: 4px 0; background: #121722; border: 1px solid #3a4152; border-radius: 4px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); font-size: 15px; line-height: 1.2; color: #e6e8ee; user-select: none; }
 .gsel-head { padding: 7px 16px 5px 14px; font-weight: 700; color: #fff; }
 .gsel-opt { padding: 7px 18px 7px 34px; cursor: default; white-space: nowrap; color: #e6e8ee; }
+.gsel-pop.flat .gsel-opt { padding-left: 14px; }
 .gsel-opt.on { background: #a8c7fa; color: #0b1220; }
 .gsel-on { cursor: pointer; }
 .gsel-on select { pointer-events: none; }

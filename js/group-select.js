@@ -16,6 +16,7 @@ function show(sel) {
   pop.className = 'gsel-pop';
   pop.setAttribute('role', 'listbox');
   pop.style.zoom = z;
+  if (!sel.querySelector('optgroup')) pop.classList.add('flat');
   for (const node of sel.children) {
     const opts = node.tagName === 'OPTGROUP' ? [...node.children] : [node];
     if (node.tagName === 'OPTGROUP') {

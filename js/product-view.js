@@ -16,7 +16,6 @@ import { createAlertFx } from './alert-fx.js';
 
 // 只有工具本身結合 IoT 的部件保留新舊對比，其他新增部件直接說作用
 const KEEP_VS = ['enable', 'torque'];
-const PLC_TONE = { direct: ['直接相關', 'd-direct'], indirect: ['間接相關', 'd-indirect'], arch: ['視架構而定', 'd-arch'], none: ['通常非直接', 'd-none'] };
 const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const NEW_KEYS = ARM_PARTS.map((p) => p.key);
 const HANG_Y = P.railY.v;
@@ -373,12 +372,7 @@ export function createProductView(deps) {
           <p class="vs-new"><i>新款</i>${esc(p.short)}</p>
           <p class="vs-old"><i>舊款</i>${esc(p.beforeShort)}</p>
         </div>` : `<p class="feature-one">${esc(p.short)}</p>`}
-        ${p.roles ? `<div class="plc-roles">
-          <h4>PLC 在各異常情境的角色</h4>
-          <ul>${p.roles.map(([name, lv, basis, role]) => `<li>
-            <span class="plc-lv ${PLC_TONE[lv][1]}">${PLC_TONE[lv][0]}</span>
-            <b>${esc(name)}</b><small>${esc(basis)} → ${esc(role)}</small></li>`).join('')}</ul>
-        </div>` : ''}`;
+        ${p.about ? `<p class="feature-about"><b>PLC 是什麼</b>${esc(p.about)}</p>` : ''}`;
     }
     document.querySelectorAll('[data-feature]').forEach((b) => b.classList.toggle('on', b.dataset.feature === k));
     arms.iot.highlight($('#product-new').checked ? NEW_KEYS : k);
