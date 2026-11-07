@@ -1,5 +1,5 @@
 // 「手臂介紹」頁（UI 層）：以新款手臂（含手臂螢幕）為主的產品介紹。
-// - 四種顯示：新款、舊款、並排對比、廠房實境（手臂裝回工站、作業員實際操作）
+// - 三種顯示：新款、舊款、並排對比（⑩ 承盤感測器特寫時暫時借用廠房場景）
 // - 點 3D 部件、編號標籤或右側清單：鏡頭飛過去放大那個部件，右側顯示舊款 vs 新款、規格與故障對策
 // - 狀態示範：新舊手臂切到同一時刻；手臂螢幕區塊的實機畫面同步更新
 
@@ -16,6 +16,8 @@ import { createAlertFx } from './alert-fx.js';
 
 // 只有工具本身結合 IoT 的部件保留新舊對比，其他新增部件直接說作用
 const KEEP_VS = ['enable', 'torque'];
+// 編號一律用同尺寸的圓形徽章（圈字 ①⑩ 在不同字型下大小不一）
+const pnum = (n) => `<span class="pnum" aria-hidden="true">${n}</span>`;
 const PLC_KEYS = PLC_GROUP.items.map(([k]) => k);
 function setPlcOpen(open) {
   const items = document.getElementById('plc-items');
@@ -24,7 +26,6 @@ function setPlcOpen(open) {
   document.getElementById('plc-head').setAttribute('aria-expanded', String(open));
   document.getElementById('plc-group').classList.toggle('open', open);
 }
-const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const NEW_KEYS = ARM_PARTS.map((p) => p.key);
 const HANG_Y = P.railY.v;
 
@@ -229,6 +230,7 @@ export function createProductView(deps) {
     tween = { t: 0, from: { pos: camera.position.clone(), tgt: controls.target.clone() }, to: { pos, tgt } };
   }
   function overview(instant = false) {
+    if (st.mode === 'plant') setMode('iot', true); // 「廠房實境」按鈕已拿掉，只有 ⑩ 承盤感測器特寫會暫時借用廠房場景
     st.focused = null;
     $('#product-back').hidden = true;
     const v = VIEW[st.mode];
@@ -381,7 +383,7 @@ export function createProductView(deps) {
         <p class="feature-one">${esc(b.text)}</p>`;
     } else {
       $('#feature-detail').innerHTML = `
-        <div class="feature-head"><span class="fnum">${NUM[p.n]}</span><h3>${esc(p.title)}</h3></div>
+        <div class="feature-head"><span class="fnum">${p.n}</span><h3>${esc(p.title)}</h3></div>
         ${k === 'screen' ? '<div class="mini-screen"><canvas id="pd-mini" width="480" height="320" aria-label="手臂螢幕目前畫面"></canvas></div>' : ''}
         ${KEEP_VS.includes(k) ? `<div class="feature-vs">
           <p class="vs-new"><i>新款</i>${esc(p.short)}</p>
@@ -389,11 +391,11 @@ export function createProductView(deps) {
         </div>` : `<p class="feature-one">${esc(p.short)}</p>`}
         ${PLC_KEYS.includes(k) ? `<div class="feature-about"><b>PLC 是什麼</b><p>${esc(PLC_GROUP.about)}</p>
           <ul>${PLC_GROUP.items.map(([pk, text]) => { const q = ARM_PARTS.find((x) => x.key === pk); return `<li><button type="button" data-feature="${pk}"${pk === k ? ' class="on"' : ''}>
-            <span>${NUM[q.n]} ${esc(q.tag)}</span>${esc(text)}</button></li>`; }).join('')}</ul></div>` : ''}`;
+            <span>${pnum(q.n)}${esc(q.tag)}</span>${esc(text)}</button></li>`; }).join('')}</ul></div>` : ''}`;
       if (PLC_KEYS.includes(k)) setPlcOpen(true);
     }
     document.querySelectorAll('[data-feature]').forEach((b) => b.classList.toggle('on', b.dataset.feature === k));
-    arms.iot.highlight($('#product-new').checked ? NEW_KEYS : k);
+    arms.iot.highlight(k);
     drawScreens();
   }
   function selectPart(k, zoom = true) {
@@ -422,11 +424,11 @@ export function createProductView(deps) {
 
   // ── 控制 ─────────────────────────────────
   // 部件清單：和 PLC 有關的收在「PLC 相關優化」下拉群組，其他照編號排
-  const partBtn = (p) => `<button type="button" data-feature="${p.key}"><span>${NUM[p.n]}</span>${esc(p.tag)}</button>`;
+  const partBtn = (p) => `<button type="button" data-feature="${p.key}">${pnum(p.n)}${esc(p.tag)}</button>`;
   $('#feature-list').innerHTML = `
     <div class="plc-group" id="plc-group">
       <button type="button" class="plc-head" id="plc-head" aria-expanded="false" aria-controls="plc-items">
-        <b>${esc(PLC_GROUP.title)}</b><small>${PLC_KEYS.map((k) => NUM[ARM_PARTS.find((p) => p.key === k).n]).join('')}</small><i aria-hidden="true"></i>
+        <b>${esc(PLC_GROUP.title)}</b><small>${PLC_KEYS.map((k) => pnum(ARM_PARTS.find((p) => p.key === k).n)).join('')}</small><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="plc-items" id="plc-items" hidden>${PLC_KEYS.map((k) => partBtn(ARM_PARTS.find((p) => p.key === k))).join('')}</div>
     </div>
@@ -446,7 +448,6 @@ export function createProductView(deps) {
   });
   document.querySelectorAll('[data-pmode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.pmode)));
   $('#product-spin').addEventListener('change', (e) => (controls.autoRotate = e.target.checked));
-  $('#product-new').addEventListener('change', renderFeature);
   $('#product-back').addEventListener('click', () => overview());
   $('#demo-select').innerHTML = DEMO_MENU.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
   groupSelect($('#demo-select'));
