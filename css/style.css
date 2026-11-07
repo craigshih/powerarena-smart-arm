@@ -867,6 +867,23 @@ table.trace, table.compare { width: 100%; border-collapse: collapse; font-size: 
 .note.n6 { left: 1.5%; top: 63%; }
 .feature-about { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; line-height: 1.6; color: var(--muted); max-width: 46em; }
 .feature-about b { display: block; margin-bottom: 2px; color: var(--text); font-size: 13px; }
+.feature-about p { margin: 0 0 8px; }
+.feature-about ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.feature-about li button { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px; border: 1px solid transparent; background: none; color: var(--muted); font-size: 12.5px; line-height: 1.5; cursor: pointer; }
+.feature-about li button span { color: var(--accent); font-weight: 700; white-space: nowrap; }
+.feature-about li button:hover { border-color: var(--line); }
+.feature-about li button.on { border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--text); }
+/* 介紹頁：PLC 相關優化下拉群組 */
+.plc-group { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+.plc-group.open { border-color: #3a5175; }
+.plc-head { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 10px; border: 0 !important; background: none !important; font-size: 13px; text-align: left; cursor: pointer; }
+.plc-head b { font-weight: 700; }
+.plc-head small { color: var(--accent); font-weight: 700; letter-spacing: 1px; }
+.plc-head i { margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translateY(-2px); transition: transform .15s; }
+.plc-group.open .plc-head i { transform: rotate(-135deg) translateY(-2px); }
+.plc-items { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 8px 8px; }
+.plc-items[hidden] { display: none; }
+@media (max-width: 767px) { .feature-about li button { grid-template-columns: 1fr; gap: 0; } }
 .pd-side { display: grid; gap: 14px; align-content: start; }
 .pd-spec { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 12px 14px; }
 .pd-spec h4 { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; font-weight: 600; }

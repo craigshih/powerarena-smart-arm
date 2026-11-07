@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { P, armMount, boltPosition } from './arm-params.js';
-import { createSmartArm, drawArmScreen, ARM_PARTS } from './arm-model.js';
+import { createSmartArm, drawArmScreen, ARM_PARTS, PLC_GROUP } from './arm-model.js';
 import { scenarioById, createRun } from './scenarios.js';
 import { buildEnvironment, addFactoryBackdrop } from './environment.js';
 import { createOperator } from './operator.js';
@@ -16,6 +16,14 @@ import { createAlertFx } from './alert-fx.js';
 
 // 只有工具本身結合 IoT 的部件保留新舊對比，其他新增部件直接說作用
 const KEEP_VS = ['enable', 'torque'];
+const PLC_KEYS = PLC_GROUP.items.map(([k]) => k);
+function setPlcOpen(open) {
+  const items = document.getElementById('plc-items');
+  if (!items) return;
+  items.hidden = !open;
+  document.getElementById('plc-head').setAttribute('aria-expanded', String(open));
+  document.getElementById('plc-group').classList.toggle('open', open);
+}
 const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const NEW_KEYS = ARM_PARTS.map((p) => p.key);
 const HANG_Y = P.railY.v;
@@ -379,7 +387,10 @@ export function createProductView(deps) {
           <p class="vs-new"><i>新款</i>${esc(p.short)}</p>
           <p class="vs-old"><i>舊款</i>${esc(p.beforeShort)}</p>
         </div>` : `<p class="feature-one">${esc(p.short)}</p>`}
-        ${p.about ? `<p class="feature-about"><b>PLC 是什麼</b>${esc(p.about)}</p>` : ''}`;
+        ${PLC_KEYS.includes(k) ? `<div class="feature-about"><b>PLC 是什麼</b><p>${esc(PLC_GROUP.about)}</p>
+          <ul>${PLC_GROUP.items.map(([pk, text]) => { const q = ARM_PARTS.find((x) => x.key === pk); return `<li><button type="button" data-feature="${pk}"${pk === k ? ' class="on"' : ''}>
+            <span>${NUM[q.n]} ${esc(q.tag)}</span>${esc(text)}</button></li>`; }).join('')}</ul></div>` : ''}`;
+      if (PLC_KEYS.includes(k)) setPlcOpen(true);
     }
     document.querySelectorAll('[data-feature]').forEach((b) => b.classList.toggle('on', b.dataset.feature === k));
     arms.iot.highlight($('#product-new').checked ? NEW_KEYS : k);
@@ -410,8 +421,26 @@ export function createProductView(deps) {
   }
 
   // ── 控制 ─────────────────────────────────
-  $('#feature-list').innerHTML = ARM_PARTS.map((p) => `<button type="button" data-feature="${p.key}"><span>${NUM[p.n]}</span>${esc(p.tag)}</button>`).join('');
+  // 部件清單：和 PLC 有關的收在「PLC 相關優化」下拉群組，其他照編號排
+  const partBtn = (p) => `<button type="button" data-feature="${p.key}"><span>${NUM[p.n]}</span>${esc(p.tag)}</button>`;
+  $('#feature-list').innerHTML = `
+    <div class="plc-group" id="plc-group">
+      <button type="button" class="plc-head" id="plc-head" aria-expanded="false" aria-controls="plc-items">
+        <b>${esc(PLC_GROUP.title)}</b><small>${PLC_KEYS.map((k) => NUM[ARM_PARTS.find((p) => p.key === k).n]).join('')}</small><i aria-hidden="true"></i>
+      </button>
+      <div class="plc-items" id="plc-items" hidden>${PLC_KEYS.map((k) => partBtn(ARM_PARTS.find((p) => p.key === k))).join('')}</div>
+    </div>
+    ${ARM_PARTS.filter((p) => !PLC_KEYS.includes(p.key)).map(partBtn).join('')}`;
+  $('#plc-head').addEventListener('click', () => {
+    const open = $('#plc-items').hidden;
+    setPlcOpen(open);
+    if (open && !PLC_KEYS.includes(st.part)) selectPart('plc');
+  });
   $('#feature-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-feature]');
+    if (b) selectPart(b.dataset.feature);
+  });
+  $('#feature-detail').addEventListener('click', (e) => {
     const b = e.target.closest('[data-feature]');
     if (b) selectPart(b.dataset.feature);
   });
