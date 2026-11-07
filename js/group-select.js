@@ -1,6 +1,5 @@
 // 分組下拉選單：外觀照報告附圖（深色面板、粗體分組標題、選項縮排、選到的那一項淺藍底）
-// 底層仍是原本的 <select>（值與 change 事件不變）；只把彈出的清單換成自繪。觸控裝置保留系統原生選單。
-const coarse = matchMedia('(pointer: coarse)');
+// 底層仍是原本的 <select>（值與 change 事件不變）；只把彈出的清單換成自繪，手機也一樣。
 let open = null;
 
 function close() {
@@ -69,22 +68,30 @@ function show(sel) {
 }
 
 export function groupSelect(sel) {
-  sel.addEventListener('mousedown', (e) => {
-    if (coarse.matches || e.button !== 0) return;
+  // 選單本身不接滑鼠（CSS：.gsel-on select { pointer-events: none }），點外框開自繪清單，
+  // 所以任何瀏覽器、作業系統都不會跳出系統原生選單
+  const box = sel.parentElement;
+  box.classList.add('gsel-on');
+  box.addEventListener('click', (e) => {
+    if (open?.pop.contains(e.target)) return;
     e.preventDefault();
     sel.focus();
     if (open?.sel === sel) close();
     else show(sel);
   });
   sel.addEventListener('keydown', (e) => {
-    if (!open || open.sel !== sel) return;
-    if (e.key === 'Escape') { e.preventDefault(); close(); }
+    const isOpen = open?.sel === sel;
+    if (isOpen && e.key === 'Escape') { e.preventDefault(); close(); return; }
+    if (e.key === ' ' || e.key === 'Enter' || (e.altKey && e.key === 'ArrowDown')) {
+      e.preventDefault();
+      if (isOpen) close(); else show(sel);
+    }
   });
   sel.addEventListener('change', () => close());
 }
 
 document.addEventListener('mousedown', (e) => {
-  if (open && !open.pop.contains(e.target) && e.target !== open.sel) close();
+  if (open && !open.pop.contains(e.target) && !open.sel.parentElement.contains(e.target)) close();
 });
 addEventListener('resize', close);
 addEventListener('scroll', (e) => { if (open && !open.pop.contains(e.target)) close(); }, true);
