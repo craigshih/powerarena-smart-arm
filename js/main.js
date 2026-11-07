@@ -469,7 +469,7 @@ function sysHtml() {
   const camBad = ['L', 'R'].some((k) => S[k].alarm?.type === 'VISION_MISMATCH');
   const dev = (name, tone, text, last) => `<li class="dev d-${tone}"><i></i><b>${name}</b><span>${text}</span><time>${last}</time></li>`;
   const devices = [
-    ...['L', 'R'].map((k) => dev(`扭矩槍 ${k}`, S[k].fault ? 'bad' : 'ok', S[k].fault ? '訊號中斷' : '連線中', ago(sys.seen[`gun${k}`]))),
+    ...['L', 'R'].map((k) => dev(`機器手臂 ${k}`, S[k].fault ? 'bad' : 'ok', S[k].fault ? '失聯' : '連線中', ago(sys.seen[`gun${k}`]))),
     dev('喇叭', 'ok', '連線中', ago(sys.seen.spk)),
     ...['L', 'R'].map((k) => dev(`麥克風 ${k}`, waiting(k) ? 'listen' : 'ok', waiting(k) ? '等待回覆' : '連線中', ago(sys.seen[`mic${k}`]))),
     dev('承盤感測器', stuck ? 'warn' : 'ok', stuck ? '回報卡住' : '連線中', S.L.phase === 'IDLE' ? '—' : '剛剛'),

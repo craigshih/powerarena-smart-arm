@@ -42,10 +42,10 @@ export const DEMOS = [
   { key: 'sequence', label: '錯誤步驟', id: 'sequence', t: 3.5, old: '先鎖上方也鎖得下去', look: ['#ff4fd8', 'swap', '錯誤步驟・先鎖左下', true] },
   { key: 'ng', label: '扭力不足', id: 'ng', t: 4.8, old: '沒有量測', look: ['#ff3b4f', 'x', '扭力不足・重鎖', true],
     use: { title: '哪一顆沒鎖好', act: '原地重鎖' } },
-  { key: 'fault', label: '系統異常 A：扭矩槍訊號中斷', id: 'tool', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '訊號中斷・已鎖住', true],
+  { key: 'fault', label: '系統異常 A：機器手臂 L 失聯', id: 'tool', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '手臂 L 失聯・已鎖住', true],
     use: { title: '開口回報', act: '說「扭矩槍沒反應」，現場主管收到通知' } },
   { key: 'vision', label: '系統異常 B：視覺與 IoT 不一致', id: 'vision', t: 5.6, old: '漏記沒人發現', look: ['#2dc7ff', 'eye', '視覺與 IoT 不一致', true] },
-  { key: 'faultC', label: '系統異常 C：扭矩槍訊號中斷', id: 'toolC', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '訊號中斷・已鎖住', true] },
+  { key: 'faultC', label: '系統異常 C：機器手臂 R 失聯', id: 'toolC', side: 'R', t: 5.5, old: '停了也沒紀錄', look: ['#ff8a3d', 'bolt', '手臂 R 失聯・已鎖住', true] },
   { key: 'done', label: '本車完成', id: 'normal', t: 36, old: '沒有完成確認', look: ['#3ccf6b', 'check', '本車完成'],
     use: { title: '鎖完確認', act: '每顆都是綠點' } },
 ];
@@ -68,7 +68,8 @@ function demoAt(d, spec) {
   const run = createRun(scenarioById(d.id), { encoder: true, spec, vin: 'TWPA2026E00000001', epoch: Date.parse('2026-10-24T08:00:00+08:00') });
   const records = [];
   for (let x = 0; x < d.t; x += 0.25) records.push(...run.advance(Math.min(x + 0.25, d.t)).records);
-  return { state: run.states.L, target: run.targets.L, trayPos: run.trayPos, trayStopped: run.trayStopped, records };
+  const side = d.side ?? 'L';
+  return { side, state: run.states[side], target: run.targets[side], trayPos: run.trayPos, trayStopped: run.trayStopped, records };
 }
 
 export function createProductView(deps) {
@@ -275,9 +276,13 @@ export function createProductView(deps) {
   // ── 狀態示範 ────────────────────────────────
   let demoCache = new Map();
   let current = null;
-  const local = (target) => (target
-    ? new THREE.Vector3(...boltPosition(target.zoneId, target.boltIndex)).sub(mount).add(new THREE.Vector3(0, 0.03, 0))
-    : POSE.clone());
+  // 右側的狀態示範：以右側掛點算出相對位置，再左右鏡像到展示用的這支手臂
+  const local = (target, side = 'L') => {
+    if (!target) return POSE.clone();
+    const v = new THREE.Vector3(...boltPosition(target.zoneId, target.boltIndex)).sub(new THREE.Vector3(...armMount(side))).add(new THREE.Vector3(0, 0.03, 0));
+    if (side === 'R') v.x = -v.x;
+    return v;
+  };
   function applyDemo(sayIt = true, instant = false) {
     const d = DEMOS.find((x) => x.key === st.demo);
     if (!demoCache.has(d.key)) demoCache.set(d.key, demoAt(d, getSpec()));
@@ -285,7 +290,7 @@ export function createProductView(deps) {
     const { state, target } = current;
     arms.iot.setState(state);
     arms.old.setState({ tool: d.oldRun ? 'RUNNING' : 'ENABLED' });
-    for (const k of ['old', 'iot']) arms[k].setToolTarget(arms[k].position.clone().add(local(target)), { instant });
+    for (const k of ['old', 'iot']) arms[k].setToolTarget(arms[k].position.clone().add(local(target, current.side)), { instant });
     if (plant) {
       plant.fx.reset();
       plant.fx.onRecords(current.records, { pops: false });
@@ -340,7 +345,7 @@ export function createProductView(deps) {
     if (!current) return;
     for (const id of ['pd-device-canvas', 'pd-mini']) {
       const c = document.getElementById(id);
-      if (c) drawArmScreen(c.getContext('2d'), current.state, 'L');
+      if (c) drawArmScreen(c.getContext('2d'), current.state, current.side);
     }
     document.querySelectorAll('[data-use]').forEach((b) => b.classList.toggle('on', b.dataset.use === st.demo));
   }
@@ -486,14 +491,14 @@ export function createProductView(deps) {
     if (st.mode === 'plant' && plant && current) {
       plant.env.tray.position.y = -P.trayDrop.v * current.trayPos;
       const s = current.state;
-      plant.env.paintBolts({ L: s }, time);
+      plant.env.paintBolts({ [current.side]: s }, time);
       plant.env.setTraySensor(current.trayStopped ? 'stuck' : 'ok', time);
       plant.op.update(dt, time, {
         mode: current.target ? 'work' : 'wait',
         grip: current.target ? arms.iot.getGrip() : null,
         top: current.target ? arms.iot.getToolTop() : null,
       });
-      plant.fx.update(dt, time, { states: { L: s, R: IDLE_R }, arms: { L: arms.iot, R: arms.iot }, tray: plant.env.tray });
+      plant.fx.update(dt, time, { states: current.side === 'R' ? { L: IDLE_R, R: s } : { L: s, R: IDLE_R }, arms: { L: arms.iot, R: arms.iot }, tray: plant.env.tray });
       if (host.dataset.fx !== plant.fx.mood) host.dataset.fx = plant.fx.mood;
     } else if (host.dataset.fx) host.dataset.fx = '';
     renderer.render(scene, camera);

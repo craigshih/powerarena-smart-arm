@@ -82,7 +82,8 @@ export const ARM_PARTS = [
       ['錯誤步驟', 'indirect', 'SOP 順序＋工具所在孔位', '提供作業階段或允許訊號'],
       ['超過鎖附時間', 'indirect', '作業時間＋工具狀態', '提供作業啟動或完成訊號'],
       ['扭力不足', 'indirect', 'IoT 扭力、角度實測值', '接收鎖附 OK／NG 結果'],
-      ['系統異常 A／C：扭矩槍訊號中斷', 'arch', '手臂 L／R 通訊心跳', '可能監測通訊狀態（視架構）'],
+      ['系統異常 A：機器手臂 L 失聯', 'arch', '左側設備通訊心跳', '可能監測通訊狀態（視架構）'],
+      ['系統異常 C：機器手臂 R 失聯', 'arch', '右側設備通訊心跳', '可能監測通訊狀態（視架構）'],
       ['系統異常 B：視覺與 IoT 不一致', 'none', '攝影機辨識＋IoT 作業紀錄', '通常由上層系統比對'],
     ],
   },
@@ -147,6 +148,7 @@ export const SCREEN_FIX = {
 };
 
 export function drawArmScreen(c, state, side) {
+  side = state.side ?? side; // 手臂介紹會把右側的狀態放到展示用的那支手臂上
   const W = c.canvas.width;
   const H = c.canvas.height;
   const k = W / 480;

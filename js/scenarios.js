@@ -82,7 +82,8 @@ function base(ctx, variant) {
   all(0.5, { ev: { type: 'cycle:start', trayDueAt: TRAY_DUE } });
 
   // 右側：步驟 1 鎖右下，之後等承盤
-  R.at(2).bolt('Z1R', 0).rest().note('右下完成，工具自動鎖住，作業員放下工具等承盤');
+  if (ctx.customR) ctx.customR(R);
+  else R.at(2).bolt('Z1R', 0).rest().note('右下完成，工具自動鎖住，作業員放下工具等承盤');
 
   // 左側依情境變化
   variant(L, all, ctx);
@@ -104,21 +105,34 @@ function base(ctx, variant) {
 
 const normalA = (L) => L.at(1.5).bolt('Z1L', 0).rest();
 
+// 系統異常 A／C：機器手臂失聯（A 左側 L、C 右側 R，同一段腳本換邊）
+const armLost = (T, zone) => {
+  T.at(1.5).move(zone, 0).trigger();
+  T.push({ ev: { type: 'tool:fault', code: 'COMM_LOST' } }, 0.5);
+  T.note('機器手臂與控制器通訊中斷（假設：接頭鬆脫），工具立刻停轉並鎖住，這一顆不計數', 0.7);
+  T.report('扭矩槍沒反應', 1.4);
+  T.wait(3).note('現場主管收到回報到場，重新插好接頭，控制器自我檢查通過');
+  T.push({ ev: { type: 'tool:recover' } }, 0.3);
+  T.wait(1).note('作業員重鎖這一顆').trigger().torque(zone);
+  T.wait(1.4).rest();
+  return T;
+};
 const TOOL_FAULT = {
   id: 'tool',
-  title: '系統異常 A：扭矩槍訊號中斷',
-  short: '鎖附中扭矩槍訊號中斷',
-  expect: '立刻停轉鎖住，恢復後重鎖這一顆。',
-  build: (ctx) => base(ctx, (L) => {
-    L.at(1.5).move('Z1L', 0).trigger();
-    L.push({ ev: { type: 'tool:fault', code: 'COMM_LOST' } }, 0.5);
-    L.note('工具與控制器通訊中斷（假設：接頭鬆脫），工具立刻停轉並鎖住，這一顆不計數', 0.7);
-    L.report('扭矩槍沒反應', 1.4);
-    L.wait(3).note('現場主管收到回報到場，重新插好接頭，控制器自我檢查通過');
-    L.push({ ev: { type: 'tool:recover' } }, 0.3);
-    L.wait(1).note('作業員重鎖這一顆').trigger().torque('Z1L');
-    L.wait(1.4).rest();
-  }),
+  title: '系統異常 A：機器手臂 L 失聯',
+  short: '鎖附中左側手臂與控制器失聯',
+  expect: '立刻停轉鎖住，恢復連線後重鎖這一顆。',
+  build: (ctx) => base(ctx, (L) => armLost(L, 'Z1L')),
+};
+const TOOL_FAULT_R = {
+  id: 'toolC',
+  title: '系統異常 C：機器手臂 R 失聯',
+  short: '鎖附中右側手臂與控制器失聯',
+  expect: '立刻停轉鎖住，恢復連線後重鎖這一顆。',
+  build: (ctx) => {
+    ctx.customR = (R) => armLost(R, 'Z1R');
+    return base(ctx, (L) => normalA(L).note('左下完成，工具已鎖定，等承盤'));
+  },
 };
 
 const VISION = {
@@ -159,7 +173,7 @@ const TRAY_FAULT = {
   },
 };
 
-// 選單內容與順序照主管端模組的情境下拉選單（A、C 都是扭矩槍訊號中斷，用同一段腳本）
+// 選單內容與順序照主管端模組的情境下拉選單（A 左側、C 右側機器手臂失聯，同一段腳本換邊）
 export const SCENARIOS = [
   {
     id: 'normal',
@@ -235,7 +249,7 @@ export const SCENARIOS = [
   },
   TOOL_FAULT,
   VISION,
-  { ...TOOL_FAULT, id: 'toolC', title: '系統異常 C：扭矩槍訊號中斷' },
+  TOOL_FAULT_R,
 ];
 
 const ALL = [...SCENARIOS, TRAY_FAULT];

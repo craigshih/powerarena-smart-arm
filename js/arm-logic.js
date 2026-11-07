@@ -6,7 +6,7 @@
 //   tool:trigger  { zoneId? }                    作業員按下扳機
 //   tool:torque   { torqueNm, angleDeg }         工具回報這一顆的扭力與角度
 //   tray:lowering / tray:lowered                 承盤 PLC 訊號
-//   tool:fault    { code }  /  tool:recover      扭矩槍訊號中斷等工具異常與恢復
+//   tool:fault    { code }  /  tool:recover      機器手臂失聯等工具異常與恢復
 //   vision:check  { zoneId, boltIndex }          攝影機（主管端視覺模組）判定這一顆已鎖
 //   voice:ack / voice:report { text }           手臂麥克風：作業員回覆「收到」／口頭回報異常
 //   bypass:on / bypass:off                       現場主管鑰匙開關（降級模式）
@@ -17,9 +17,9 @@
 
 import { P, SEQUENCE, SPEC, zoneById } from './arm-params.js';
 
-// 代號照主管端模組：A 扭矩槍訊號中斷、B 視覺與 IoT 不一致；承盤異常在主管端清單沒有代號
+// 代號：A 機器手臂 L 失聯、B 視覺與 IoT 不一致、C 機器手臂 R 失聯；承盤異常沒有代號
 export const CATEGORY = {
-  TOOL: '系統異常 A：扭矩槍訊號中斷',
+  TOOL: '系統異常 A／C：機器手臂失聯',
   VISION: '系統異常 B：視覺與 IoT 不一致',
   AUTOMATION: '系統異常：承盤異常',
   OPERATION: '作業異常',
@@ -40,8 +40,8 @@ export const EVENT_TYPES = {
   TRAY_LOWERING: { label: '承盤開始下降', result: 'INFO', category: '' },
   TRAY_LOWERED: { label: '承盤下降完成', result: 'INFO', category: '' },
   AUTOMATION_FAULT: { label: '承盤異常', result: 'FAULT', category: 'AUTOMATION' },
-  TOOL_FAULT: { label: '扭矩槍訊號中斷', result: 'FAULT', category: 'TOOL' },
-  TOOL_RECOVERED: { label: '扭矩槍恢復', result: 'INFO', category: '' },
+  TOOL_FAULT: { label: '機器手臂失聯', result: 'FAULT', category: 'TOOL' },
+  TOOL_RECOVERED: { label: '機器手臂恢復連線', result: 'INFO', category: '' },
   VISION_MISMATCH: { label: '視覺與 IoT 不一致', result: 'FAULT', category: 'VISION' },
   VOICE_ACK: { label: '作業員回覆收到', result: 'INFO', category: '' },
   VOICE_REPORT: { label: '作業員口頭回報', result: 'WARN', category: '' },
@@ -53,7 +53,7 @@ export const EVENT_TYPES = {
 export const RESULT_LABEL = { OK: 'OK', NG: 'NG', BLOCKED: '已攔下', WARN: '警告', FAULT: '故障', INFO: '資訊' };
 
 export const FAULT_TEXT = {
-  COMM_LOST: '扭矩槍與控制器訊號中斷',
+  COMM_LOST: '與控制器通訊中斷',
   BATTERY_LOW: '電池電量不足',
   TRANSDUCER: '扭力感測器異常',
   TRAY_STUCK: '承盤下降逾時',
@@ -361,8 +361,11 @@ export function createArmLogic(options = {}) {
       s.attempt = null;
       s.fault = e.code || 'COMM_LOST';
       rec('TOOL_FAULT', { zoneId: aborted?.zoneId ?? '', boltIndex: aborted?.boltIndex ?? null });
-      const comm = s.fault === 'COMM_LOST'; // 系統異常 A 專指扭矩槍訊號中斷，其他工具問題照舊叫工具異常
-      alarm('TOOL_FAULT', 'fault', `${comm ? '系統異常 A' : '工具異常'}：${FAULT_TEXT[s.fault] ?? s.fault}`, comm ? '扭矩槍訊號中斷，請通知現場主管' : '工具異常，請通知現場主管');
+      // 失聯依側別分代號：左側 A、右側 C；其他工具問題照舊叫工具異常
+      const comm = s.fault === 'COMM_LOST';
+      const code = s.side === 'L' ? 'A' : 'C';
+      alarm('TOOL_FAULT', 'fault', comm ? `系統異常 ${code}：機器手臂 ${s.side} 失聯` : `工具異常：${FAULT_TEXT[s.fault] ?? s.fault}`,
+        comm ? `機器手臂${s.side}失聯，請通知現場主管` : '工具異常，請通知現場主管');
     },
 
     // 攝影機判定這一顆已鎖，IoT 卻沒有它的扭力紀錄（例如資料寫入失敗）：視覺與 IoT 不一致。
