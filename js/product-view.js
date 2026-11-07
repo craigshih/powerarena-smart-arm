@@ -15,7 +15,7 @@ import { createAlertFx } from './alert-fx.js';
 
 // 只有工具本身結合 IoT 的部件保留新舊對比，其他新增部件直接說作用
 const KEEP_VS = ['enable', 'torque'];
-const PLC_TONE = { direct: ['直接', 'd-direct'], indirect: ['間接', 'd-indirect'], arch: ['視架構', 'd-arch'], none: ['不經過', 'd-none'] };
+const PLC_TONE = { direct: ['直接相關', 'd-direct'], indirect: ['間接相關', 'd-indirect'], arch: ['視架構而定', 'd-arch'], none: ['通常非直接', 'd-none'] };
 const NUM = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 const NEW_KEYS = ARM_PARTS.map((p) => p.key);
 const HANG_Y = P.railY.v;
@@ -49,6 +49,12 @@ export const DEMOS = [
   { key: 'done', label: '本車完成', id: 'normal', t: 36, old: '沒有完成確認', look: ['#3ccf6b', 'check', '本車完成'],
     use: { title: '鎖完確認', act: '每顆都是綠點' } },
 ];
+// 選單項目；正常流程裡的其他時刻（鎖附中、等承盤、本車完成）與即將超時，選單停在所屬情境
+const DEMO_MENU = [
+  ['ready', '正常流程'], ['early', '降前鎖附'], ['timeout', '超過鎖附時間'], ['sequence', '錯誤步驟'], ['ng', '扭力不足'],
+  ['fault', '系統異常 A：機器手臂 L 失聯'], ['vision', '系統異常 B：視覺與 IoT 不一致'], ['faultC', '系統異常 C：機器手臂 R 失聯'],
+];
+const MENU_OF = { running: 'ready', wait: 'ready', done: 'ready', warn: 'timeout' };
 const ICON = {
   check: '<path d="M4 12l5 5L20 6"/>',
   spin: '<path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>',
@@ -295,7 +301,7 @@ export function createProductView(deps) {
       plant.fx.reset();
       plant.fx.onRecords(current.records, { pops: false });
     }
-    $('#demo-select').value = d.key;
+    $('#demo-select').value = MENU_OF[d.key] ?? d.key;
     const a = state.alarm && state.alarm.level !== 'info' ? state.alarm : null;
     const [color, ic, text, blink] = d.look;
     const label = d.key === 'warn' && state.remaining != null ? `剩 ${Math.ceil(state.remaining)} 秒` : text;
@@ -412,10 +418,8 @@ export function createProductView(deps) {
   $('#product-spin').addEventListener('change', (e) => (controls.autoRotate = e.target.checked));
   $('#product-new').addEventListener('change', renderFeature);
   $('#product-back').addEventListener('click', () => overview());
-  const DEMO_GROUPS = [['正常', ['ready', 'running', 'done']], ['提醒', ['warn', 'wait']],
-    ['錯誤', ['early', 'timeout', 'sequence', 'ng', 'fault', 'vision', 'faultC']]];
-  $('#demo-select').innerHTML = DEMO_GROUPS.map(([g, keys]) => `<optgroup label="${g}">${keys
-    .map((k) => `<option value="${k}">${DEMOS.find((d) => d.key === k).label}</option>`).join('')}</optgroup>`).join('');
+  // 狀態選單照最終版情境分類（同主管端模組的情境下拉選單），不再分正常／提醒／錯誤
+  $('#demo-select').innerHTML = DEMO_MENU.map(([k, label]) => `<option value="${k}">${esc(label)}</option>`).join('');
   $('#demo-select').addEventListener('change', (e) => {
     unlockAudio();
     st.demo = e.target.value;
