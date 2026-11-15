@@ -314,7 +314,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     trigger: mat(0xd2552c, { roughness: 0.5 }),
     ring: mat(LIGHT.off, { emissive: LIGHT.off, emissiveIntensity: 0, roughness: 0.3, metalness: 0.1 }),
   };
-  const lampMats = ['red', 'yellow', 'green'].map((c) => mat(LIGHT[c], {
+  const lampMats = ['red', 'green'].map((c) => mat(LIGHT[c], { // Andon 只有紅、綠
     emissive: LIGHT[c], emissiveIntensity: 0.04, transparent: true, opacity: 0.9, roughness: 0.3, metalness: 0,
   }));
   const micMat = mat(LIGHT.off, { emissive: LIGHT.green, emissiveIntensity: 0.35, roughness: 0.3, metalness: 0 });
@@ -493,7 +493,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
   const speaker = cyl(0.05, 0.012, M.grille, -0.06, cabY - 0.07, -0.074);
   speaker.rotation.x = Math.PI / 2;
   const lamps = new THREE.Group();
-  lampMats.forEach((m, i) => lamps.add(cyl(0.032, 0.06, m, 0.09, cabY + 0.21 + (2 - i) * 0.062, 0, 20)));
+  lampMats.forEach((m, i) => lamps.add(cyl(0.032, 0.06, m, 0.09, cabY + 0.21 + (1 - i) * 0.062, 0, 20)));
   lamps.add(cyl(0.012, 0.03, M.steel, 0.09, cabY + 0.19, 0, 10));
   ctrl.add(tagPart(new THREE.Group().add(speaker, lamps), 'controller'));
   const keySw = cyl(0.018, 0.02, M.yellow, 0.08, cabY - 0.08, -0.078, 16);
@@ -595,7 +595,7 @@ export function createSmartArm({ side = 'L', labels = true, mount = true, legacy
     M.ring.emissiveIntensity = ringOn ? 1.6 : 0.05;
     micMat.emissive.setHex(listening ? LIGHT.blue : LIGHT.green);
     micMat.emissiveIntensity = listening ? 0.7 + 0.7 * Math.sin(time * 7) : 0.35;
-    ['red', 'yellow', 'green'].forEach((c, i) => {
+    ['red', 'green'].forEach((c, i) => {
       const v = sig.stack[c];
       lampMats[i].emissiveIntensity = v === 'on' || (v === 'blink' && blinkOn) ? 1.5 : 0.04;
     });

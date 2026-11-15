@@ -98,13 +98,27 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
     }
   }
 
-  // 工站 Andon 燈：綠燈＝正常作業、紅燈＝作業異常（場域模型的燈柱有三格，黃燈不用）
+  // 工站 Andon 燈：綠燈＝正常作業、紅燈＝作業異常
   function setAndon(level, time) {
     const [red, yellow, green] = station.lamps;
     const blink = Math.floor(time * 2.8) % 2 === 0;
     red.emissiveIntensity = level >= 2 ? (blink ? 2.2 : 0.4) : 0.05;
     yellow.emissiveIntensity = 0.05;
     green.emissiveIntensity = level >= 2 ? 0.05 : 1.6;
+  }
+
+  // 場域模型（js/twin 不改）的燈柱是三色：拿掉黃燈那格，紅燈往下接在綠燈上，名稱改 Andon 燈號
+  {
+    const [redM, yellowM] = station.lamps;
+    let red = null;
+    let yellow = null;
+    root.traverse((o) => { if (o.material === redM) red = o; if (o.material === yellowM) yellow = o; });
+    if (yellow && red) {
+      red.position.y = yellow.position.y;
+      yellow.parent.remove(yellow);
+      const info = { ...red.userData.info, title: 'Andon 燈號', rows: [['綠燈', '正常作業'], ['紅燈', '作業異常']] };
+      red.parent.traverse((o) => { if (o.isMesh) o.userData.info = info; });
+    }
   }
 
   return {

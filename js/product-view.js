@@ -43,7 +43,7 @@ export const DEMOS = [
     use: { title: '該鎖哪一顆', act: '白框標出下一顆' } },
   { key: 'running', label: '鎖附中', id: 'normal', t: 3.5, old: '鎖附中，不回報扭力', oldRun: true, look: ['#4ea8ff', 'spin', '鎖附中'] },
   { key: 'warn', label: '即將超時', id: 'timeout', t: 12, old: '沒有倒數', look: ['#f0b545', 'clock', '即將超時'],
-    use: { title: '還剩多少時間', act: '倒數變黃' } },
+    use: { title: '還剩多少時間', act: '剩 15 秒語音提醒' } },
   { key: 'wait', label: '等承盤', id: 'normal', t: 15, old: '仍然能轉', look: ['#f0b545', 'lock', '已鎖定・等承盤'] },
   { key: 'early', label: '降前鎖附', id: 'early', t: 15.8, old: '工具照轉，承盤沒降就鎖上', oldRun: true, look: ['#e0303a', 'stop', '降前鎖附・已攔下', true],
     use: { title: '為什麼被攔下', act: '放開扳機，說「收到」' } },
