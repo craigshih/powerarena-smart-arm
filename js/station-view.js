@@ -371,8 +371,7 @@ export function createStationView(deps) {
       });
     }
     env.paintBolts(st, time);
-    const blinkYellow = ph.key === 'B' || ph.key === 'gate';
-    env.setAndon(blinkYellow ? 1 : -1, time);
+    env.setAndon(-1, time); // 廠房情境沒有異常，Andon 一直綠燈
 
     if (ph.key !== lastPhase) {
       if (lastPhase) pushLog(ph.label, ph.tone === 'teal' ? 'ok' : ph.tone === 'orange' ? 'warn' : 'info');

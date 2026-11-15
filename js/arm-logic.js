@@ -479,7 +479,7 @@ export function createArmLogic(options = {}) {
 }
 
 // 工具與控制器的燈號（由狀態推導，模型與畫面共用）
-// ring：工具握把 LED 環；stack：控制器三色燈（red / yellow / green：'on' | 'blink' | 'off'）
+// ring：工具握把 LED 環；stack：控制器 Andon 燈（綠＝正常作業、紅＝作業異常；yellow 保留欄位但不亮）
 export function signalsFor(state) {
   const a = state.alarm;
   const stack = { red: 'off', yellow: 'off', green: 'off' };
@@ -491,19 +491,18 @@ export function signalsFor(state) {
     case 'ENABLED': ring = 'green'; stack.green = 'on'; break;
     default:
       if (state.lockReason === 'WRONG_ZONE') { ring = 'yellow'; ringBlink = true; stack.green = 'on'; }
-      else if (state.lockReason === 'WAIT_TRAY') { ring = 'yellow'; stack.yellow = 'on'; }
+      else if (state.lockReason === 'WAIT_TRAY') { ring = 'yellow'; stack.green = 'on'; }
       else if (state.lockReason === 'DONE') { stack.green = 'on'; }
   }
   let haptic = false;
   if (a && (a.level === 'alarm' || a.level === 'fault')) {
+    stack.green = 'off';
     stack.red = a.level === 'fault' ? 'blink' : 'on';
     if (['EARLY_ATTEMPT', 'SEQUENCE_ERROR', 'TIGHTEN_NG'].includes(a.type)) {
       ring = 'red';
       ringBlink = a.type !== 'TIGHTEN_NG';
       haptic = true;
     }
-  } else if (a && a.level === 'warn') {
-    stack.yellow = 'blink';
   }
   const label = state.tool === 'LOCKED' ? TOOL_TEXT.LOCKED[state.lockReason] ?? '已鎖定' : TOOL_TEXT[state.tool];
   return { ring, ringBlink, stack, haptic, label };

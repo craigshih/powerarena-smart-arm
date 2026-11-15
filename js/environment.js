@@ -98,13 +98,13 @@ export function buildEnvironment(root, { frustums = false, dims = false, tags = 
     }
   }
 
-  // 工站三色燈：依最嚴重的警示亮燈
+  // 工站 Andon 燈：綠燈＝正常作業、紅燈＝作業異常（場域模型的燈柱有三格，黃燈不用）
   function setAndon(level, time) {
     const [red, yellow, green] = station.lamps;
     const blink = Math.floor(time * 2.8) % 2 === 0;
     red.emissiveIntensity = level >= 2 ? (blink ? 2.2 : 0.4) : 0.05;
-    yellow.emissiveIntensity = level === 1 ? (blink ? 2.2 : 0.3) : 0.05;
-    green.emissiveIntensity = level < 1 ? 1.6 : 0.05;
+    yellow.emissiveIntensity = 0.05;
+    green.emissiveIntensity = level >= 2 ? 0.05 : 1.6;
   }
 
   return {
