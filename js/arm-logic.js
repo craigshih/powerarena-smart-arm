@@ -479,7 +479,7 @@ export function createArmLogic(options = {}) {
 }
 
 // 工具與控制器的燈號（由狀態推導，模型與畫面共用）
-// ring：工具握把 LED 環；stack：控制器 Andon 燈（綠＝正常作業、紅＝作業異常；yellow 保留欄位但不亮）
+// ring：工具握把 LED 環（同 Andon：綠＝正常作業、紅＝作業異常）；stack：控制器 Andon 燈（綠＝正常作業、紅＝作業異常；yellow 保留欄位但不亮）
 export function signalsFor(state) {
   const a = state.alarm;
   const stack = { red: 'off', yellow: 'off', green: 'off' };
@@ -487,11 +487,11 @@ export function signalsFor(state) {
   let ringBlink = false;
   switch (state.tool) {
     case 'FAULT': ring = 'red'; ringBlink = true; stack.red = 'blink'; break;
-    case 'RUNNING': ring = 'blue'; stack.green = 'on'; break;
+    case 'RUNNING': ring = 'green'; stack.green = 'on'; break;
     case 'ENABLED': ring = 'green'; stack.green = 'on'; break;
     default:
-      if (state.lockReason === 'WRONG_ZONE') { ring = 'yellow'; ringBlink = true; stack.green = 'on'; }
-      else if (state.lockReason === 'WAIT_TRAY') { ring = 'yellow'; stack.green = 'on'; }
+      if (state.lockReason === 'WRONG_ZONE') { ring = 'red'; ringBlink = true; stack.green = 'on'; }
+      else if (state.lockReason === 'WAIT_TRAY') { ring = 'green'; stack.green = 'on'; }
       else if (state.lockReason === 'DONE') { stack.green = 'on'; }
   }
   let haptic = false;

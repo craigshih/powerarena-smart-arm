@@ -181,7 +181,7 @@ export const SCENARIOS = [
     short: '下方 → 承盤 → 上方',
     expect: '每顆 OK；鎖完自動鎖住，承盤降下自動開放。',
     build: (ctx) => base(ctx, (L) => {
-      normalA(L).note('左下完成，握把燈轉黃：工具已鎖定，等承盤');
+      normalA(L).note('左下完成，工具已鎖定，等承盤');
     }),
   },
   {
@@ -226,7 +226,7 @@ export const SCENARIOS = [
         L.at(1.5).note('作業員憑習慣先去鎖左上螺絲').move('Z2L', 0);
         if (ctx.encoder) {
           L.trigger().torque('Z2L');
-          L.wait(0.4).note('工具不轉、握把黃燈閃；廣播「錯誤步驟，請先鎖左下螺絲」，作業員回覆「收到」改鎖左下').ack('收到', 0.2);
+          L.wait(0.4).note('工具不轉、握把紅燈閃；廣播「錯誤步驟，請先鎖左下螺絲」，作業員回覆「收到」改鎖左下').ack('收到', 0.2);
           L.wait(0.2).bolt('Z1L', 0).rest();
         } else {
           L.trigger().torque('Z1L');
